@@ -15,15 +15,15 @@ COPY ./poetry.lock ./pyproject.toml ./
 
 # Install python dependencies using poetry
 RUN poetry config virtualenvs.create false
-RUN poetry install
+RUN poetry install --no-root
 
 # Download the sentence transformer model
 RUN mkdir /models
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/msmarco-distilbert-dot-v5', cache_folder='/models')"
 
 # Copy files to image
-COPY ./navigator_embeddings_generation/src ./src
-COPY ./navigator_embeddings_generation/cli ./cli
+COPY ./navigator_embeddings_generation/src ./navigator_embeddings_generation/src
+COPY ./navigator_embeddings_generation/cli ./navigator_embeddings_generation/cli
 
 # Run the indexer on the input s3 directory
 ENTRYPOINT [ "sh", "./cli/run.sh" ]
