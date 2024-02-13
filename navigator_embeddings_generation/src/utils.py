@@ -5,11 +5,14 @@ from typing import Optional, Tuple, Union, List, Set, Sequence
 
 import numpy as np
 
-from src import config
+from navigator_embeddings_generation.src import config
 
 from cpr_data_access.parser_models import ParserOutput, TextBlock, BlockType
-from src.ml import SentenceEncoder
-from src.s3 import get_s3_keys_with_prefix, s3_object_read_text
+from navigator_embeddings_generation.src.ml import SentenceEncoder
+from navigator_embeddings_generation.src.s3 import (
+    get_s3_keys_with_prefix,
+    s3_object_read_text,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from src import config
+from navigator_embeddings_generation.src import config
 from cpr_data_access.parser_models import ParserOutput
 
 logger = logging.getLogger(__name__)

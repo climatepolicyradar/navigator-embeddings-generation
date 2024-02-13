@@ -6,7 +6,7 @@ import numpy as np
 from aws_error_utils.aws_error_utils import errors
 from botocore.exceptions import ClientError
 
-from src.config import S3_PATTERN
+from navigator_embeddings_generation.src.config import S3_PATTERN
 
 
 def validate_s3_pattern(s3_path: str):

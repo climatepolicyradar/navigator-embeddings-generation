@@ -3,10 +3,12 @@ from typing import Sequence
 import numpy as np
 from cpr_data_access.parser_models import BlockType, ParserOutput, PDFTextBlock
 
-from cli.test.conftest import test_pdf_file_json  # noqa: F401
-from src import config
-from src.ml import SBERTEncoder
-from src.utils import (
+from navigator_embeddings_generation.cli.test.conftest import (  # noqa: F401
+    test_pdf_file_json,
+)
+from navigator_embeddings_generation.src import config
+from navigator_embeddings_generation.src.ml import SBERTEncoder
+from navigator_embeddings_generation.src.utils import (
     filter_on_block_type,
     replace_text_blocks,
     filter_blocks,

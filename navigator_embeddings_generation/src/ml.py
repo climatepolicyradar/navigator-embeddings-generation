@@ -6,7 +6,7 @@ from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
-from src import config
+from navigator_embeddings_generation.src import config
 
 
 class SentenceEncoder(ABC):
