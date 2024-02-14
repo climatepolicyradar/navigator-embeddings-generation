@@ -10,16 +10,20 @@ import click
 import numpy as np
 from tqdm.auto import tqdm
 
-from src.languages import get_docs_of_supported_language
-from src.ml import SBERTEncoder
-from src import config
-from src.utils import (
+from navigator_embeddings_generation.src.languages import get_docs_of_supported_language
+from navigator_embeddings_generation.src.ml import SBERTEncoder
+from navigator_embeddings_generation.src import config
+from navigator_embeddings_generation.src.utils import (
     filter_on_block_type,
     encode_parser_output,
     get_files_to_process,
     get_Text2EmbeddingsInput_array,
 )
-from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3_as_npy
+from navigator_embeddings_generation.src.s3 import (
+    check_file_exists_in_s3,
+    write_json_to_s3,
+    save_ndarray_to_s3_as_npy,
+)
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_LOGGING = {

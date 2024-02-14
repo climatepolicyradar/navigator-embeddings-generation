@@ -2,7 +2,7 @@ import json
 
 import numpy as np
 
-from src.s3 import (
+from navigator_embeddings_generation.src.s3 import (
     validate_s3_pattern,
     check_file_exists_in_s3,
     get_s3_keys_with_prefix,

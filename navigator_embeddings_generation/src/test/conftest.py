@@ -11,7 +11,7 @@ from pydantic import AnyHttpUrl
 from cpr_data_access.parser_models import ParserOutput, HTMLData
 from cpr_data_access.pipeline_general_models import BackendDocument
 
-from cli.test.conftest import get_html_text_block
+from navigator_embeddings_generation.cli.test.conftest import get_html_text_block
 
 
 class S3Client:

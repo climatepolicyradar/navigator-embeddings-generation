@@ -1,7 +1,7 @@
 import numpy as np
 
-from src import config
-from src.ml import SBERTEncoder
+from navigator_embeddings_generation.src import config
+from navigator_embeddings_generation.src.ml import SBERTEncoder
 
 
 def test_encoder():

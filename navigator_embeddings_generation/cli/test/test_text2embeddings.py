@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from click.testing import CliRunner
 
-from cli.text2embeddings import run_as_cli
+from navigator_embeddings_generation.cli.text2embeddings import run_as_cli
 from cpr_data_access.parser_models import ParserOutput
 
 

@@ -4,6 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["CPR Tech <tech@climatepolicyradar.org>"]
 
+packages = [
+    { include = "navigator_embeddings_generation" },
+]
+
 [tool.poetry.dependencies]
 python = "^3.9"
 sentence-transformers = "^2.2.0"
