@@ -5,11 +5,10 @@ from typing import List, Sequence, Union
 import boto3
 import botocore.client
 import pytest
+from cpr_sdk.parser_models import HTMLData, ParserOutput
+from cpr_sdk.pipeline_general_models import BackendDocument
 from moto import mock_s3
 from pydantic import AnyHttpUrl
-
-from cpr_data_access.parser_models import ParserOutput, HTMLData
-from cpr_data_access.pipeline_general_models import BackendDocument
 
 from cli.test.conftest import get_html_text_block
 

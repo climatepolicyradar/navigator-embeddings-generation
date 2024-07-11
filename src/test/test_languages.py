@@ -1,6 +1,7 @@
 from typing import List
 
-from cpr_data_access.parser_models import ParserOutput
+from cpr_sdk.parser_models import ParserOutput
+
 from src.languages import get_docs_of_supported_language
 
 # TODO test that the warning is logged if the document language is not supported by

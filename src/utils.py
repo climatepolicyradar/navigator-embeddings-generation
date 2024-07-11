@@ -1,13 +1,12 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Tuple, Union, List, Set, Sequence
+from typing import List, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
+from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
 
 from src import config
-
-from cpr_data_access.parser_models import ParserOutput, TextBlock, BlockType
 from src.ml import SentenceEncoder
 from src.s3 import get_s3_keys_with_prefix, s3_object_read_text
 

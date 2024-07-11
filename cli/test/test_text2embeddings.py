@@ -6,9 +6,9 @@ from pathlib import Path
 
 import numpy as np
 from click.testing import CliRunner
+from cpr_sdk.parser_models import ParserOutput
 
 from cli.text2embeddings import run_as_cli
-from cpr_data_access.parser_models import ParserOutput
 
 
 def test_run_encoder_local(
