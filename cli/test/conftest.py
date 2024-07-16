@@ -4,9 +4,8 @@ import os
 import boto3
 import botocore.client
 import pytest
+from cpr_sdk.parser_models import BlockType, HTMLTextBlock
 from moto import mock_s3
-
-from cpr_data_access.parser_models import BlockType, HTMLTextBlock
 
 
 class S3Client:

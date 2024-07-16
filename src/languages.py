@@ -1,8 +1,9 @@
 import logging
 from typing import List
 
+from cpr_sdk.parser_models import ParserOutput
+
 from src import config
-from cpr_data_access.parser_models import ParserOutput
 
 logger = logging.getLogger(__name__)
 
