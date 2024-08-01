@@ -6,17 +6,22 @@ updates:
       interval: monthly
     ignore:
       - dependency-name: cpr_sdk
+    reviewers:
+      - climatepolicyradar/deng
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
     ignore:
       - dependency-name: cpr_sdk
+    reviewers:
+      - climatepolicyradar/deng
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: daily
-    allow: 
+    allow:
       - dependency-name: cpr_sdk
     target-branch: main
-
+    reviewers:
+      - climatepolicyradar/deng
