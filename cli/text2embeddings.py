@@ -126,12 +126,6 @@ def run_embeddings_generation(
 
     See docstring for run_as_cli for details.
     """
-    # FIXME: This solution assumes that we have a json document with language = en (
-    #  supported target language) for every document in the parser output. This isn't
-    #  very robust. This solution also requires passing every document into the
-    #  embeddings stage so we are declaring tasks that are immediately dropped due to
-    #  content. Filter only to tasks that have one language and where the language is
-    #  supported. These could either be translated or in the original language.
 
     logger.info(
         "Running embeddings generation...",
