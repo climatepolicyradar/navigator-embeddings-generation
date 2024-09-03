@@ -7,7 +7,7 @@ import botocore.client
 import pytest
 from cpr_sdk.parser_models import HTMLData, ParserOutput
 from cpr_sdk.pipeline_general_models import BackendDocument
-from moto import mock_s3
+from moto import mock_aws
 from pydantic import AnyHttpUrl
 
 from cli.test.conftest import get_html_text_block
@@ -76,7 +76,7 @@ def pipeline_s3_objects(
 
 @pytest.fixture
 def pipeline_s3_client(s3_bucket_and_region, pipeline_s3_objects):
-    with mock_s3():
+    with mock_aws():
         s3_client = S3Client(s3_bucket_and_region["region"])
 
         s3_client.client.create_bucket(
