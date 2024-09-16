@@ -116,7 +116,7 @@ class SBERTEncoder(SentenceEncoder):
             if self.get_n_tokens(text) > max_seq_length:
                 windows = sliding_window(
                     text, window_size=max_seq_length, stride=max_seq_length // 2
-                )  # Use max_seq_length as window size and half of it as stride
+                )  # Use reasonable, safe, calculated values for the sliding window
                 processed_texts.extend(windows)
                 window_lengths.append(len(windows))
             else:
