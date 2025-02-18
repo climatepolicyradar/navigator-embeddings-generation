@@ -11,7 +11,7 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from src.languages import get_docs_of_supported_language
-from src.ml import SBERTEncoder
+from src.encoders import SBERTEncoder
 from src import config
 from src.utils import (
     filter_on_block_type,

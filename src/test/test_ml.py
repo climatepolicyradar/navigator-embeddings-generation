@@ -1,7 +1,7 @@
 import numpy as np
 
 from src import config
-from src.ml import SBERTEncoder, sliding_window
+from src.encoders import SBERTEncoder, sliding_window
 
 
 def test_encoder():

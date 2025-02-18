@@ -7,7 +7,7 @@ import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
 
 from src import config
-from src.ml import SentenceEncoder
+from src.encoders import SentenceEncoder
 from src.s3 import get_s3_keys_with_prefix, s3_object_read_text
 
 logger = logging.getLogger(__name__)
