@@ -9,7 +9,7 @@ from src.serializers import BasicSerializer
 def test_basic_pipeline(
     test_parser_output_source_url_supported_lang_data: list[ParserOutput],
 ):
-    parser_output = test_parser_output_source_url_supported_lang_data[0]
+    parser_output: ParserOutput = test_parser_output_source_url_supported_lang_data[0]
 
     basic_pipeline = Pipeline(
         chunker=IdentityChunker(),

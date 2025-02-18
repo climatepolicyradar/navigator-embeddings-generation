@@ -3,7 +3,7 @@
 from typing import Sequence
 from abc import ABC, abstractmethod
 
-from cpr_sdk.models import BaseDocument
+from cpr_sdk.parser_models import ParserOutput, PDFTextBlock
 from src.models import ChunkType, Chunk
 
 
@@ -13,7 +13,7 @@ class BaseChunker(ABC):
     @abstractmethod
     def __call__(
         self,
-        document: BaseDocument,
+        document: ParserOutput,
     ) -> Sequence[Chunk]:
         """
         [(text, text_block_type), ...]
@@ -55,7 +55,7 @@ class IdentityChunker(BaseChunker):
 
     def __call__(
         self,
-        document: BaseDocument,
+        document: ParserOutput,
     ) -> list[Chunk]:
         """Run chunker"""
 
@@ -67,10 +67,10 @@ class IdentityChunker(BaseChunker):
                 text=text_block.to_string(),
                 chunk_type=ChunkType(text_block.type),
                 bounding_boxes=[text_block.coords]
-                if hasattr(text_block, "coords") and text_block.coords
+                if isinstance(text_block, PDFTextBlock) and text_block.coords
                 else None,
                 pages=[text_block.page_number]
-                if hasattr(text_block, "page_number")
+                if isinstance(text_block, PDFTextBlock)
                 else None,
             )
             for text_block in document.text_blocks

@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 
 import numpy as np
-from cpr_sdk.models import BaseDocument
+from cpr_sdk.parser_models import ParserOutput
 
 from src.models import Chunk
 from src.chunkers import BaseChunker
@@ -55,7 +55,7 @@ class Pipeline:
             )
 
     def __call__(
-        self, document: BaseDocument, encoder_batch_size: Optional[int] = None
+        self, document: ParserOutput, encoder_batch_size: Optional[int] = None
     ) -> list[str] | np.ndarray:
         """Run the pipeline on a single document."""
 
