@@ -2,7 +2,7 @@
 
 from typing import Optional, Sequence
 from enum import Enum
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from pydantic import BaseModel
 from cpr_sdk.models import BaseDocument
@@ -32,7 +32,8 @@ class Chunk(BaseModel):
 
     text: str
     chunk_type: ChunkType
-    headings: Optional[Sequence["Chunk"]] = None
+    # TODO: do we want multiple headings here? this is what docling does.
+    heading: Optional["Chunk"] = None
     # Bounding boxes can be arbitrary polygons according to Azure
     # TODO: is this true according to the backend or frontend?
     bounding_boxes: Optional[list[list[tuple[float, float]]]]
@@ -46,6 +47,7 @@ class Chunk(BaseModel):
 class BaseChunker(ABC):
     """Base class for performing chunking on a document."""
 
+    @abstractmethod
     def __call__(
         self,
         document: BaseDocument,
