@@ -55,7 +55,10 @@ class Pipeline:
             )
 
     def __call__(
-        self, document: ParserOutput, encoder_batch_size: Optional[int] = None
+        self,
+        document: ParserOutput,
+        encoder_batch_size: Optional[int] = None,
+        device: Optional[str] = None,
     ) -> list[str] | np.ndarray:
         """Run the pipeline on a single document."""
 
@@ -77,4 +80,5 @@ class Pipeline:
             return self.encoder.encode_batch(
                 text_batch=serialized_text,
                 batch_size=encoder_batch_size,  # type: ignore
+                device=device,
             )

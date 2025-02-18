@@ -15,11 +15,13 @@ from src.encoders import SBERTEncoder
 from src import config
 from src.utils import (
     filter_on_block_type,
-    encode_parser_output,
     get_files_to_process,
     get_Text2EmbeddingsInput_array,
 )
 from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3_as_npy
+from src.pipeline import Pipeline
+from src.chunkers import IdentityChunker
+from src.serializers import BasicSerializer
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_LOGGING = {
@@ -183,6 +185,13 @@ def run_embeddings_generation(
     logger.info(f"Loading sentence-transformer model {config.SBERT_MODEL}")
     encoder = SBERTEncoder(config.SBERT_MODEL)
 
+    pipeline = Pipeline(
+        chunker=IdentityChunker(),
+        document_cleaners=[],
+        serializer=BasicSerializer(),
+        encoder=encoder,
+    )
+
     logger.info(
         "Encoding text from documents.",
         extra={
@@ -221,8 +230,12 @@ def run_embeddings_generation(
             )
             continue
 
-        description_embedding, text_embeddings = encode_parser_output(
-            encoder, task, config.ENCODING_BATCH_SIZE, device=device
+        description_embedding = encoder.encode(task.document_description, device=device)
+
+        text_embeddings = pipeline(
+            task,
+            encoder_batch_size=config.ENCODING_BATCH_SIZE,
+            device=device,
         )
 
         combined_embeddings = (
