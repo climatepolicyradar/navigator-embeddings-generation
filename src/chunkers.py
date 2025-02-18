@@ -66,8 +66,12 @@ class IdentityChunker(BaseChunker):
             Chunk(
                 text=text_block.to_string(),
                 chunk_type=ChunkType(text_block.type),
-                bounding_boxes=[text_block.coords] if text_block.coords else None,
-                pages=[text_block.page_number],
+                bounding_boxes=[text_block.coords]
+                if hasattr(text_block, "coords") and text_block.coords
+                else None,
+                pages=[text_block.page_number]
+                if hasattr(text_block, "page_number")
+                else None,
             )
             for text_block in document.text_blocks
         ]

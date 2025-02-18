@@ -19,7 +19,7 @@ def sliding_window(text: str, window_size: int, stride: int) -> list[str]:
     return windows
 
 
-class SentenceEncoder(ABC):
+class BaseEncoder(ABC):
     """Base class for a sentence encoder"""
 
     @abstractmethod
@@ -41,7 +41,7 @@ class SentenceEncoder(ABC):
         raise NotImplementedError
 
 
-class SBERTEncoder(SentenceEncoder):
+class SBERTEncoder(BaseEncoder):
     """Encoder which uses the sentence-transformers library.
 
     A list of pretrained models is available at
