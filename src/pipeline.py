@@ -54,6 +54,10 @@ class Pipeline:
                 f"The following components have incorrect types: {incorrect_typed_components_msg}"
             )
 
+    def _empty_response(self) -> list[str] | np.ndarray:
+        """Return an empty list or array depending on the pipeline configuration."""
+        return [] if self.encoder is None else np.empty((0, self.encoder.dimension))
+
     def __call__(
         self,
         document: ParserOutput,
@@ -71,6 +75,10 @@ class Pipeline:
 
         for cleaner in self.document_cleaners:
             chunks = cleaner(chunks)
+
+        # If there are no chunks at this point, return an empty response
+        if chunks == []:
+            return self._empty_response()
 
         serialized_text: list[str] = [self.serializer(chunk) for chunk in chunks]
 

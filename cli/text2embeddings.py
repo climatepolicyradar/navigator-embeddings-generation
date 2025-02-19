@@ -240,7 +240,7 @@ def run_embeddings_generation(
 
         combined_embeddings = (
             np.vstack([description_embedding, text_embeddings])
-            if text_embeddings is not None
+            if text_embeddings.shape[0] > 0
             else description_embedding.reshape(1, -1)
         )
 
