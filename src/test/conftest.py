@@ -161,7 +161,7 @@ def test_parser_output_array() -> List[ParserOutput]:
                     get_html_text_block("Text"),
                     get_html_text_block("Figure"),
                     get_html_text_block("Text"),
-                    get_html_text_block("Google Text Block"),
+                    get_html_text_block("sectionHeading"),
                 ],
             ),
             source_url="https://www.google.com/path.html",
@@ -175,7 +175,7 @@ def test_parser_output_array() -> List[ParserOutput]:
                 text_blocks=[
                     get_html_text_block("Table"),
                     get_html_text_block("Text"),
-                    get_html_text_block("Google Text Block"),
+                    get_html_text_block("sectionHeading"),
                 ],
             ),
             source_url="https://www.google.com/path.html",
@@ -220,7 +220,7 @@ def test_parser_output_source_url_supported_lang_data() -> List[ParserOutput]:
                 has_valid_text=True,
                 text_blocks=[
                     get_html_text_block("Table"),
-                    get_html_text_block("Google Text Block"),
+                    get_html_text_block("sectionHeading"),
                 ],
             ),
             source_url="https://www.example.com/files/climate-document.pdf",
@@ -239,7 +239,7 @@ def test_parser_output_source_url_un_supported_lang_data() -> List[ParserOutput]
                 has_valid_text=True,
                 text_blocks=[
                     get_html_text_block("Table"),
-                    get_html_text_block("Google Text Block"),
+                    get_html_text_block("sectionHeading"),
                 ],
             ),
             source_url="https://www.example.com/files/climate-document.pdf",
