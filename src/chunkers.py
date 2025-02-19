@@ -15,37 +15,7 @@ class BaseChunker(ABC):
         self,
         document: ParserOutput,
     ) -> Sequence[Chunk]:
-        """
-        [(text, text_block_type), ...]
-
-        HEADING 1.1
-        TEXT --> merge/split
-        TEXT --> merge/split
-        TEXT --> merge/split
-        TEXT --> merge/split
-        TEXT --> merge/split
-        HEADING 1.1 --> remove
-        TEXT --> merge/split
-        TEXT --> merge/split
-        HEADING
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL
-        TABLECELL --> do we ignore these under a certain length?
-        LISTITEM
-        LISTITEM
-        LISTITEM
-        LISTITEM --> s: detect these. does this exist in metrics code?
-
-        TABLECAPTION --> 1 table
-
-        - dealing with lists: what is the 'sentence' equivalent?
-        """
+        """Run chunker."""
 
         raise NotImplementedError
 
@@ -57,7 +27,7 @@ class IdentityChunker(BaseChunker):
         self,
         document: ParserOutput,
     ) -> list[Chunk]:
-        """Run chunker"""
+        """Run chunker."""
 
         if not document.text_blocks:
             return []
