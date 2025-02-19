@@ -232,11 +232,14 @@ def run_embeddings_generation(
 
         description_embedding = encoder.encode(task.document_description, device=device)
 
-        text_embeddings = pipeline(
-            task,
-            encoder_batch_size=config.ENCODING_BATCH_SIZE,
-            device=device,
-        )
+        if task.html_data is not None and task.html_data.has_valid_text is False:
+            text_embeddings = pipeline.get_empty_response()
+        else:
+            text_embeddings = pipeline(
+                task,
+                encoder_batch_size=config.ENCODING_BATCH_SIZE,
+                device=device,
+            )
 
         combined_embeddings = (
             np.vstack([description_embedding, text_embeddings])
