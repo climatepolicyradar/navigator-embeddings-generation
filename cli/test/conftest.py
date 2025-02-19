@@ -216,7 +216,7 @@ def test_pdf_file_json() -> dict:
                     ],
                     "text_block_id": "p_1_b_1",
                     "language": "en",
-                    "type": "Ambiguous",
+                    "type": "sectionHeading",
                     "type_confidence": 1.0,
                     "coords": [
                         [25.807947158813477, 285.88555908203125],
@@ -274,7 +274,7 @@ def test_pdf_file_json() -> dict:
                     ],
                     "text_block_id": "p_1_b_4",
                     "language": "en",
-                    "type": "Ambiguous",
+                    "type": "sectionHeading",
                     "type_confidence": 1.0,
                     "coords": [
                         [27.318716049194336, 482.4350280761719],
@@ -609,7 +609,7 @@ def test_pdf_file_json() -> dict:
                     ],
                     "text_block_id": "p_3_b_2",
                     "language": "en",
-                    "type": "Ambiguous",
+                    "type": "sectionHeading",
                     "type_confidence": 1.0,
                     "coords": [
                         [24.573030471801758, 356.9373779296875],
