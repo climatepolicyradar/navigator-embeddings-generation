@@ -28,7 +28,7 @@ def test_filter_on_block_type(test_parser_output_array):
     assert filtered_inputs[0].html_data.text_blocks[0].type == "Table"
     assert filtered_inputs[0].html_data.text_blocks[0].text == ["test_text"]
 
-    assert filtered_inputs[0].html_data.text_blocks[1].type == "Google Text Block"
+    assert filtered_inputs[0].html_data.text_blocks[1].type == "sectionHeading"
     assert filtered_inputs[0].html_data.text_blocks[1].text == ["test_text"]
 
     # Assert that we can filter on IndexerInputs that don't have valid text
@@ -38,7 +38,7 @@ def test_filter_on_block_type(test_parser_output_array):
     assert filtered_inputs[1].html_data.text_blocks[0].type == "Table"
     assert filtered_inputs[1].html_data.text_blocks[0].text == ["test_text"]
 
-    assert filtered_inputs[1].html_data.text_blocks[1].type == "Google Text Block"
+    assert filtered_inputs[1].html_data.text_blocks[1].type == "sectionHeading"
     assert filtered_inputs[1].html_data.text_blocks[1].text == ["test_text"]
 
 
