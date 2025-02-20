@@ -1,5 +1,5 @@
 from src.models import Chunk, ChunkType
-from src.document_cleaners import RemoveShortTableCells
+from src.document_cleaners import RemoveShortTableCells, RemoveRepeatedAdjacentChunks
 
 
 def test_remove_short_table_cells_drop_numeric():
@@ -89,3 +89,86 @@ def test_remove_short_table_cells_keep_numeric():
     assert len(result) == 2
     assert result[0].text == "123.45"
     assert result[1].text == "1,234.56"
+
+
+def test_remove_repeated_adjacent_chunks():
+    """Test filtering of repeated chunks of the same type."""
+    cleaner = RemoveRepeatedAdjacentChunks()
+    chunks = [
+        Chunk(
+            text="Header",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="Some content",
+            chunk_type=ChunkType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="Header",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="Different Header",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="footnote",
+            chunk_type=ChunkType.FOOTNOTE,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="important title",
+            chunk_type=ChunkType.TITLE,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="footnote",
+            chunk_type=ChunkType.FOOTNOTE,
+            bounding_boxes=None,
+            pages=None,
+        ),
+    ]
+
+    result = cleaner(chunks)
+
+    assert len(result) == 5
+    assert result[0].text == "Header"
+    assert result[1].text == "Some content"
+    assert result[2].text == "Different Header"
+    assert result[3].text == "footnote"
+    assert result[4].text == "important title"
+
+
+def test_remove_repeated_adjacent_chunks_case_sensitive():
+    """Test case-sensitive filtering of repeated chunks."""
+    cleaner = RemoveRepeatedAdjacentChunks(ignore_case=False)
+    chunks = [
+        Chunk(
+            text="Header",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+        ),
+        Chunk(
+            text="HEADER",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+        ),
+    ]
+
+    result = cleaner(chunks)
+
+    assert len(result) == 2
+    assert result[0].text == "Header"
+    assert result[1].text == "HEADER"

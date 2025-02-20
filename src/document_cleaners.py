@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence
+from typing import Sequence, Optional
 from logging import getLogger
 import re
 
@@ -84,5 +84,64 @@ class RemoveShortTableCells(BaseDocumentCleaner):
                 continue
 
             new_chunks.append(chunk)
+
+        return new_chunks
+
+
+class RemoveRepeatedAdjacentChunks(BaseDocumentCleaner):
+    """
+    Remove chunks of the same type that are repeated, keeping the first.
+
+    This is useful for headers, footers and headings that may be repeated once per page
+    in a document.
+    """
+
+    def __init__(
+        self,
+        chunk_types=[
+            ChunkType.SECTION_HEADING,
+            ChunkType.TITLE,
+            ChunkType.PAGE_HEADER,
+            ChunkType.PAGE_FOOTER,
+            ChunkType.FOOTNOTE,
+        ],
+        ignore_case: bool = True,
+    ) -> None:
+        """
+        Args:
+
+        :param chunk_types: list of chunk types to check for repeating
+        :param ignore_case: whether filtering ignores case. Defaults to True
+        """
+        self.chunk_types = chunk_types
+        self.ignore_case = ignore_case
+
+    def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
+        """Run repeated adjacent chunk filtering."""
+        new_chunks: list[Chunk] = []
+        current_chunk_of_type: dict[ChunkType, Optional[str]] = {
+            chunk_type: None for chunk_type in self.chunk_types
+        }
+
+        for chunk in chunks:
+            if chunk.chunk_type not in self.chunk_types:
+                new_chunks.append(chunk)
+                continue
+
+            current_text = current_chunk_of_type[chunk.chunk_type]
+            chunk_text = chunk.text.lower() if self.ignore_case else chunk.text
+
+            match current_text:
+                case None:
+                    # First time seeing this chunk type
+                    current_chunk_of_type[chunk.chunk_type] = chunk_text
+                    new_chunks.append(chunk)
+                case matched_text if matched_text != chunk_text:
+                    # Different text than previous chunk of this type
+                    current_chunk_of_type[chunk.chunk_type] = chunk_text
+                    new_chunks.append(chunk)
+                case _:
+                    # Same text as previous chunk of this type, skip it
+                    continue
 
         return new_chunks

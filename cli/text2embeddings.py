@@ -21,7 +21,11 @@ from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3
 from src.pipeline import Pipeline
 from src.chunkers import IdentityChunker
 from src.serializers import BasicSerializer
-from src.document_cleaners import ChunkTypeFilter, RemoveShortTableCells
+from src.document_cleaners import (
+    ChunkTypeFilter,
+    RemoveShortTableCells,
+    RemoveRepeatedAdjacentChunks,
+)
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_LOGGING = {
@@ -182,6 +186,7 @@ def run_embeddings_generation(
         document_cleaners=[
             ChunkTypeFilter(types_to_remove=config.BLOCKS_TO_FILTER),
             RemoveShortTableCells(min_chars=10, remove_all_numeric=True),
+            RemoveRepeatedAdjacentChunks(),
         ],
         serializer=BasicSerializer(),
         encoder=encoder,
