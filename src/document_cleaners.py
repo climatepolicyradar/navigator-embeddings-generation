@@ -145,3 +145,41 @@ class RemoveRepeatedAdjacentChunks(BaseDocumentCleaner):
                     continue
 
         return new_chunks
+
+
+class AddHeadings(BaseDocumentCleaner):
+    """
+    Add headings to chunks.
+
+    Only works at a single-level. This means that (subheading -> heading) and
+    (text -> subheading) relationships will exist, but not (text -> heading) if there
+    is a subheading between them.
+    """
+
+    def __init__(self) -> None:
+        self.heading_types = {ChunkType.TITLE}
+        self.subheading_types = {ChunkType.SECTION_HEADING, ChunkType.PAGE_HEADER}
+
+    def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
+        """Add headings to chunks."""
+
+        current_heading = None
+        current_subheading = None
+
+        # Make a copy of the chunks
+        new_chunks = list(chunks)
+
+        for chunk in new_chunks:
+            if chunk.chunk_type in self.heading_types:
+                current_heading = chunk
+                # A heading is the top level, so we don't want it to have a heading
+                # itself
+                continue
+            elif chunk.chunk_type in self.subheading_types:
+                current_subheading = chunk
+                chunk.heading = current_heading
+                continue
+
+            chunk.heading = current_subheading or current_heading
+
+        return new_chunks

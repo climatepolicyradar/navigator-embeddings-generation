@@ -1,5 +1,9 @@
 from src.models import Chunk, ChunkType
-from src.document_cleaners import RemoveShortTableCells, RemoveRepeatedAdjacentChunks
+from src.document_cleaners import (
+    RemoveShortTableCells,
+    RemoveRepeatedAdjacentChunks,
+    AddHeadings,
+)
 
 
 def test_remove_short_table_cells_drop_numeric():
@@ -11,42 +15,49 @@ def test_remove_short_table_cells_drop_numeric():
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="1",
         ),
         Chunk(
             text="this is long enough",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="2",
         ),
         Chunk(
             text="123.45",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="3",
         ),
         Chunk(
             text="1,234.56",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="4",
         ),
         Chunk(
             text="-123.45",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="5",
         ),
         Chunk(
             text="not a table cell",
             chunk_type=ChunkType.TEXT,
             bounding_boxes=None,
             pages=None,
+            id="6",
         ),
         Chunk(
             text="12345 with text",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="7",
         ),
     ]
 
@@ -69,18 +80,21 @@ def test_remove_short_table_cells_keep_numeric():
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="1",
         ),
         Chunk(
             text="123.45",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="2",
         ),
         Chunk(
             text="1,234.56",
             chunk_type=ChunkType.TABLE_CELL,
             bounding_boxes=None,
             pages=None,
+            id="3",
         ),
     ]
 
@@ -100,42 +114,49 @@ def test_remove_repeated_adjacent_chunks():
             chunk_type=ChunkType.PAGE_HEADER,
             bounding_boxes=None,
             pages=None,
+            id="1",
         ),
         Chunk(
             text="Some content",
             chunk_type=ChunkType.TEXT,
             bounding_boxes=None,
             pages=None,
+            id="2",
         ),
         Chunk(
             text="Header",
             chunk_type=ChunkType.PAGE_HEADER,
             bounding_boxes=None,
             pages=None,
+            id="3",
         ),
         Chunk(
             text="Different Header",
             chunk_type=ChunkType.PAGE_HEADER,
             bounding_boxes=None,
             pages=None,
+            id="4",
         ),
         Chunk(
             text="footnote",
             chunk_type=ChunkType.FOOTNOTE,
             bounding_boxes=None,
             pages=None,
+            id="5",
         ),
         Chunk(
             text="important title",
             chunk_type=ChunkType.TITLE,
             bounding_boxes=None,
             pages=None,
+            id="6",
         ),
         Chunk(
             text="footnote",
             chunk_type=ChunkType.FOOTNOTE,
             bounding_boxes=None,
             pages=None,
+            id="7",
         ),
     ]
 
@@ -158,12 +179,14 @@ def test_remove_repeated_adjacent_chunks_case_sensitive():
             chunk_type=ChunkType.PAGE_HEADER,
             bounding_boxes=None,
             pages=None,
+            id="1",
         ),
         Chunk(
             text="HEADER",
             chunk_type=ChunkType.PAGE_HEADER,
             bounding_boxes=None,
             pages=None,
+            id="2",
         ),
     ]
 
@@ -172,3 +195,79 @@ def test_remove_repeated_adjacent_chunks_case_sensitive():
     assert len(result) == 2
     assert result[0].text == "Header"
     assert result[1].text == "HEADER"
+
+
+def test_add_headings():
+    """Test adding headings to chunks with title and section headings."""
+    cleaner = AddHeadings()
+    chunks = [
+        Chunk(
+            text="Document Title",
+            chunk_type=ChunkType.TITLE,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="Regular text",
+            chunk_type=ChunkType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="Section 1",
+            chunk_type=ChunkType.SECTION_HEADING,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text="Text under section 1",
+            chunk_type=ChunkType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="More text under section 1",
+            chunk_type=ChunkType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+        Chunk(
+            text="Page Header",
+            chunk_type=ChunkType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+            id="6",
+        ),
+        Chunk(
+            text="Text under page header",
+            chunk_type=ChunkType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="7",
+        ),
+    ]
+
+    results = cleaner(chunks)
+
+    # Title shouldn't have a heading
+    assert results[0].heading is None
+    assert all(chunk.heading is not None for chunk in results[1:])
+
+    # Text under the title
+    assert results[1].heading.id == results[0].id  # type: ignore
+
+    # Section headings under the title
+    assert results[2].heading.id == results[0].id  # type: ignore
+    assert results[5].heading.id == results[0].id  # type: ignore
+
+    # Text under the first section heading
+    assert results[3].heading.id == results[2].id  # type: ignore
+    assert results[4].heading.id == results[2].id  # type: ignore
+
+    # Text under the second section heading
+    assert results[6].heading.id == results[5].id  # type: ignore
