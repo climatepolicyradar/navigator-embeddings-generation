@@ -35,6 +35,8 @@ class Chunk(BaseModel):
     # TODO: is this true according to the backend or frontend?
     bounding_boxes: Optional[list[list[tuple[float, float]]]]
     pages: Optional[list[int]]
+    tokens: Optional[list[str]] = None
+    serialized_text: Optional[str] = None
 
     def _verify_bbox_and_pages(self) -> None:
         if self.bounding_boxes is not None and self.pages is not None:

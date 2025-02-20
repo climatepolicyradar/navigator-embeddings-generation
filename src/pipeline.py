@@ -1,13 +1,36 @@
 from typing import Optional, Sequence
 
 import numpy as np
-from cpr_sdk.parser_models import ParserOutput
+from cpr_sdk.parser_models import ParserOutput, PDFTextBlock
 
-from src.models import Chunk
+from src.models import Chunk, ChunkType
 from src.chunkers import BaseChunker
 from src.document_cleaners import BaseDocumentCleaner
 from src.serializers import BaseSerializer
 from src.encoders import BaseEncoder
+
+
+def parser_output_to_chunks(parser_output: ParserOutput) -> list[Chunk]:
+    """Convert a parser output to a list of chunks."""
+    if not parser_output.text_blocks:
+        return []
+
+    chunks = [
+        Chunk(
+            id=text_block.text_block_id,
+            text=text_block.to_string(),
+            chunk_type=ChunkType(text_block.type),
+            bounding_boxes=[text_block.coords]
+            if isinstance(text_block, PDFTextBlock) and text_block.coords
+            else None,
+            pages=[text_block.page_number]
+            if isinstance(text_block, PDFTextBlock)
+            else None,
+        )
+        for text_block in parser_output.text_blocks
+    ]
+
+    return chunks
 
 
 class Pipeline:
@@ -24,35 +47,8 @@ class Pipeline:
         self.document_cleaners = document_cleaners
         self.serializer = serializer
         self.encoder = encoder
-        # self._validate_pipeline()
 
         self.pipeline_return_type = list[str] if self.encoder is None else np.ndarray
-
-    def _validate_pipeline(self) -> None:
-        """
-        Check that the pipeline components are valid.
-
-        Raises a ValueError if not.
-        """
-
-        component_type_map = {
-            "chunker": BaseChunker,
-            "document_cleaners": Sequence[BaseDocumentCleaner],
-            "serializer": BaseSerializer,
-            "encoder": Optional[BaseEncoder],
-        }
-
-        incorrect_typed_components = [
-            k for k, v in component_type_map.items() if not isinstance(k, v)
-        ]
-
-        if incorrect_typed_components:
-            incorrect_typed_components_msg = ",".join(
-                f"{k} ({component_type_map[k]})" for k in incorrect_typed_components
-            )
-            raise ValueError(
-                f"The following components have incorrect types: {incorrect_typed_components_msg}"
-            )
 
     def get_empty_response(self) -> list[str] | np.ndarray:
         """Return an empty list or array depending on the pipeline configuration."""
@@ -71,7 +67,9 @@ class Pipeline:
                 "This pipeline contains an encoder but no batch size was set. Please set a batch size."
             )
 
-        chunks: Sequence[Chunk] = self.chunker(document)
+        chunks = parser_output_to_chunks(document)
+
+        chunks: Sequence[Chunk] = self.chunker(chunks)
 
         for cleaner in self.document_cleaners:
             chunks = cleaner(chunks)
