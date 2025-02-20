@@ -1,25 +1,11 @@
 """Classes for chunking documents."""
 
 from typing import Sequence
-from abc import ABC, abstractmethod
 
-from src.models import Chunk
-
-
-class BaseChunker(ABC):
-    """Base class for performing chunking on a document."""
-
-    @abstractmethod
-    def __call__(
-        self,
-        chunks: Sequence[Chunk],
-    ) -> Sequence[Chunk]:
-        """Run chunker."""
-
-        raise NotImplementedError
+from src.models import Chunk, PipelineComponent
 
 
-class IdentityChunker(BaseChunker):
+class IdentityChunker(PipelineComponent):
     """Returns the text blocks converted to chunks, with no attempts at changing them."""
 
     def __call__(
@@ -31,7 +17,7 @@ class IdentityChunker(BaseChunker):
         return list(chunks)
 
 
-# class GreedyStructureAwareChunker(BaseChunker):
+# class GreedyStructureAwareChunker(PipelineComponent):
 #     """
 #     Chunker which makes use of the structure of the document.
 

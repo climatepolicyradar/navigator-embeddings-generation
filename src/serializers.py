@@ -1,19 +1,9 @@
-from abc import ABC, abstractmethod
 from typing import Optional
 
-from src.models import Chunk
+from src.models import Chunk, PipelineComponent
 
 
-class BaseSerializer(ABC):
-    """Base class for serialising chunks into strings"""
-
-    @abstractmethod
-    def __call__(self, chunk: Chunk) -> Chunk:
-        """Run serialization."""
-        raise NotImplementedError
-
-
-class BasicSerializer(BaseSerializer):
+class BasicSerializer(PipelineComponent):
     """
     The most basic serializer.
 
@@ -26,7 +16,7 @@ class BasicSerializer(BaseSerializer):
         return chunk
 
 
-class HeadingAwareSerializer(BaseSerializer):
+class HeadingAwareSerializer(PipelineComponent):
     """
     Returns the text of the chunk and its heading according to a template.
 

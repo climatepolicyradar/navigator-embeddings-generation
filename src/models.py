@@ -1,4 +1,5 @@
 from typing import Optional
+from abc import ABC, abstractmethod
 
 from enum import Enum
 from pydantic import BaseModel
@@ -41,3 +42,18 @@ class Chunk(BaseModel):
     def _verify_bbox_and_pages(self) -> None:
         if self.bounding_boxes is not None and self.pages is not None:
             assert len(self.bounding_boxes) == len(self.pages)
+
+
+class PipelineComponent(ABC):
+    """
+    A component of the pipeline.
+
+    When called, takes a list of chunks as input and returns a list of chunks. This
+    should be used as the base class for every pipeline component except for the
+    encoder.
+    """
+
+    @abstractmethod
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
+        """Base class for any pipeline component."""
+        raise NotImplementedError
