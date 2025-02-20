@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Sequence
+from logging import getLogger
 
-from src.models import Chunk
+from src.models import Chunk, ChunkType
+
+logger = getLogger(__name__)
 
 
 class BaseDocumentCleaner(ABC):
@@ -19,3 +22,31 @@ class IdentityDocumentCleaner(BaseDocumentCleaner):
     def __call__(self, chunks: Sequence[Chunk]) -> list[Chunk]:
         """Run document cleaning"""
         return list(chunks)
+
+
+class ChunkTypeFilter(BaseDocumentCleaner):
+    """Filter out chunks of specified types."""
+
+    def __init__(self, types_to_remove: list[str]) -> None:
+        """
+        Args:
+
+        :param types_to_remove: the types of chunk to remove
+        """
+        for _type in types_to_remove:
+            try:
+                ChunkType(_type)
+            except NameError:
+                logger.warning(
+                    f"Blocks to filter should be of a known block type, removing {_type} "
+                    f"from the list. "
+                )
+                types_to_remove.remove(_type)
+
+        self.chunks_to_drop = types_to_remove
+
+    def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
+        """Run chunk type filtering."""
+        return [
+            chunk for chunk in chunks if chunk.chunk_type not in self.chunks_to_drop
+        ]
