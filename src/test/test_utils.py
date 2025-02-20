@@ -9,37 +9,9 @@ from src.encoders import SBERTEncoder
 from src.utils import (
     encode_parser_output,
     filter_blocks,
-    filter_on_block_type,
     get_ids_with_suffix,
     replace_text_blocks,
 )
-
-
-def test_filter_on_block_type(test_parser_output_array):
-    """Tests that the filter_on_block_type function removes the correct text blocks."""
-
-    filtered_inputs = filter_on_block_type(
-        inputs=test_parser_output_array, remove_block_types=["Text", "Figure"]
-    )
-
-    assert filtered_inputs[0].html_data is not None
-    assert len(filtered_inputs[0].html_data.text_blocks) == 2
-
-    assert filtered_inputs[0].html_data.text_blocks[0].type == "Table"
-    assert filtered_inputs[0].html_data.text_blocks[0].text == ["test_text"]
-
-    assert filtered_inputs[0].html_data.text_blocks[1].type == "sectionHeading"
-    assert filtered_inputs[0].html_data.text_blocks[1].text == ["test_text"]
-
-    # Assert that we can filter on IndexerInputs that don't have valid text
-    assert filtered_inputs[1].html_data is not None
-    assert len(filtered_inputs[1].html_data.text_blocks) == 2
-
-    assert filtered_inputs[1].html_data.text_blocks[0].type == "Table"
-    assert filtered_inputs[1].html_data.text_blocks[0].text == ["test_text"]
-
-    assert filtered_inputs[1].html_data.text_blocks[1].type == "sectionHeading"
-    assert filtered_inputs[1].html_data.text_blocks[1].text == ["test_text"]
 
 
 def test_has_valid_text_override(test_parser_output_array: Sequence[ParserOutput]):

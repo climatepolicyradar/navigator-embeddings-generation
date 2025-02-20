@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
-from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
+from cpr_sdk.parser_models import ParserOutput, TextBlock
 
 from src import config
 from src.encoders import BaseEncoder
@@ -48,36 +48,6 @@ def filter_blocks(
                 },
             )
     return filtered_blocks
-
-
-def filter_on_block_type(
-    inputs: Sequence[ParserOutput], remove_block_types: List[str]
-) -> Sequence[ParserOutput]:
-    """
-    Filter a sequence of ParserOutputs.
-
-    Remove the text blocks that are of the types declared in the remove block types
-    array.
-    """
-    for _filter in remove_block_types:
-        try:
-            BlockType(_filter)
-        except NameError:
-            logger.warning(
-                f"Blocks to filter should be of a known block type, removing {_filter} "
-                f"from the list. "
-            )
-            remove_block_types.remove(_filter)
-
-    return [
-        replace_text_blocks(
-            block=_input,
-            new_text_blocks=filter_blocks(
-                parser_output=_input, remove_block_types=remove_block_types
-            ),
-        )
-        for _input in inputs
-    ]
 
 
 def get_ids_with_suffix(files: Sequence[str], suffix: str) -> Set[str]:

@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from cpr_sdk.parser_models import ParserOutput
 
 from cli.text2embeddings import run_as_cli
+from src.config import BLOCKS_TO_FILTER
 
 
 def test_run_encoder_local(
@@ -45,7 +46,13 @@ def test_run_encoder_local(
             }
 
             for path in Path(output_dir).glob("*.json"):
-                assert ParserOutput.model_validate(json.loads(path.read_text()))
+                parser_output = ParserOutput.model_validate(
+                    json.loads(path.read_text())
+                )
+                text_blocks = parser_output.text_blocks
+                assert not any(
+                    text_block.type in BLOCKS_TO_FILTER for text_block in text_blocks
+                )
 
             for path in Path(output_dir).glob("*.npy"):
                 assert np.load(str(path)).shape[1] == 768
