@@ -1,4 +1,5 @@
 from typing import Optional, Sequence
+from logging import getLogger
 
 import numpy as np
 from cpr_sdk.parser_models import ParserOutput, PDFTextBlock
@@ -8,6 +9,8 @@ from src.chunkers import BaseChunker
 from src.document_cleaners import BaseDocumentCleaner
 from src.serializers import BaseSerializer
 from src.encoders import BaseEncoder
+
+logger = getLogger(__name__)
 
 
 def parser_output_to_chunks(parser_output: ParserOutput) -> list[Chunk]:
@@ -78,9 +81,18 @@ class Pipeline:
         if chunks == []:
             return self.get_empty_response()
 
-        serialized_text: list[str] = [self.serializer(chunk) for chunk in chunks]
+        serialized_chunks: list[Chunk] = [self.serializer(chunk) for chunk in chunks]
+        serialized_text = [
+            chunk.serialized_text or "NONE" for chunk in serialized_chunks
+        ]
 
         if self.encoder is None:
+            if not all(
+                hasattr(chunk, "serialized_text") for chunk in serialized_chunks
+            ):
+                logger.warning(
+                    "Not all chunks have been serialized. Returning 'NONE' in place of those that are empty."
+                )
             return serialized_text
         else:
             return self.encoder.encode_batch(
