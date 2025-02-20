@@ -39,12 +39,12 @@ class Pipeline:
     def __init__(
         self,
         chunker: PipelineComponent,
-        document_cleaners: Sequence[PipelineComponent],
+        chunk_processors: Sequence[PipelineComponent],
         serializer: PipelineComponent,
         encoder: Optional[BaseEncoder] = None,
     ) -> None:
         self.chunker = chunker
-        self.document_cleaners = document_cleaners
+        self.chunk_processors = chunk_processors
         self.serializer = serializer
         self.encoder = encoder
 
@@ -71,7 +71,7 @@ class Pipeline:
 
         chunks: Sequence[Chunk] = self.chunker(chunks)
 
-        for cleaner in self.document_cleaners:
+        for cleaner in self.chunk_processors:
             chunks = cleaner(chunks)
 
         # If there are no chunks at this point, return an empty response

@@ -2,7 +2,7 @@ from cpr_sdk.parser_models import ParserOutput
 
 from src.pipeline import Pipeline
 from src.chunkers import IdentityChunker
-from src.document_cleaners import IdentityDocumentCleaner
+from src.chunk_processors import IdentityChunkProcessor
 from src.serializers import BasicSerializer
 
 
@@ -13,7 +13,7 @@ def test_basic_pipeline(
 
     basic_pipeline = Pipeline(
         chunker=IdentityChunker(),
-        document_cleaners=[IdentityDocumentCleaner()],
+        chunk_processors=[IdentityChunkProcessor()],
         serializer=BasicSerializer(),
     )
     result = basic_pipeline(parser_output)

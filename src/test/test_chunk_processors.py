@@ -1,5 +1,5 @@
 from src.models import Chunk, ChunkType
-from src.document_cleaners import (
+from src.chunk_processors import (
     RemoveShortTableCells,
     RemoveRepeatedAdjacentChunks,
     AddHeadings,

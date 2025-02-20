@@ -1,3 +1,9 @@
+"""
+Components which processes sequences of chunks in the pipeline.
+
+These could filter, clean or modify the chunks in some way.
+"""
+
 from typing import Sequence, Optional
 from logging import getLogger
 import re
@@ -7,7 +13,7 @@ from src.models import Chunk, ChunkType, PipelineComponent
 logger = getLogger(__name__)
 
 
-class IdentityDocumentCleaner(PipelineComponent):
+class IdentityChunkProcessor(PipelineComponent):
     """Returns all the chunks. Useful for testing."""
 
     def __call__(self, chunks: Sequence[Chunk]) -> list[Chunk]:
