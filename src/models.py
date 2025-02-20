@@ -26,6 +26,7 @@ class ChunkType(str, Enum):
 class Chunk(BaseModel):
     """A unit part of a document."""
 
+    id: str
     text: str
     chunk_type: ChunkType
     # TODO: do we want multiple headings here? this is what docling does.

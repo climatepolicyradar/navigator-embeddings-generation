@@ -34,6 +34,7 @@ class IdentityChunker(BaseChunker):
 
         chunks = [
             Chunk(
+                id=text_block.text_block_id,
                 text=text_block.to_string(),
                 chunk_type=ChunkType(text_block.type),
                 bounding_boxes=[text_block.coords]
