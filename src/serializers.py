@@ -1,27 +1,26 @@
-from abc import ABC, abstractmethod
 from typing import Optional
 
-from src.models import Chunk
+from src.models import Chunk, PipelineComponent
 
 
-class BaseSerializer(ABC):
-    """Base class for serialising chunks into strings"""
+class BasicSerializer(PipelineComponent):
+    """
+    The most basic serializer.
 
-    @abstractmethod
-    def __call__(self, chunk: Chunk) -> str:
+    Returns the chunk with text added in the `serialized_text` field.
+    """
+
+    def __call__(self, chunks: list) -> list[Chunk]:
         """Run serialization."""
-        raise NotImplementedError
+        new_chunks = list(chunks)
+
+        for chunk in new_chunks:
+            chunk.serialized_text = chunk.text
+
+        return new_chunks
 
 
-class BasicSerializer(BaseSerializer):
-    """The most basic serializer. Returns the text of the chunk."""
-
-    def __call__(self, chunk: Chunk) -> str:
-        """Run serialization."""
-        return chunk.text
-
-
-class HeadingAwareSerializer(BaseSerializer):
+class HeadingAwareSerializer(PipelineComponent):
     """
     Returns the text of the chunk and its heading according to a template.
 
@@ -32,9 +31,16 @@ class HeadingAwareSerializer(BaseSerializer):
     def __init__(self, template: Optional[str]) -> None:
         self.template: str = template or "{text} – {heading}"
 
-    def __call__(self, chunk: Chunk) -> str:
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
         """Run serialization."""
-        if chunk.heading is None:
-            return chunk.text
 
-        return self.template.format(text=chunk.text, heading=chunk.heading)
+        new_chunks = list(chunks)
+
+        for chunk in new_chunks:
+            chunk.serialized_text = (
+                self.template.format(text=chunk.text, heading=chunk.heading)
+                if chunk.heading
+                else chunk.text
+            )
+
+        return chunks

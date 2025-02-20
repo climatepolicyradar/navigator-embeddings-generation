@@ -1,23 +1,13 @@
-from abc import ABC, abstractmethod
 from typing import Sequence, Optional
 from logging import getLogger
 import re
 
-from src.models import Chunk, ChunkType
+from src.models import Chunk, ChunkType, PipelineComponent
 
 logger = getLogger(__name__)
 
 
-class BaseDocumentCleaner(ABC):
-    """Base class for perfoming cleaning on a sequence of chunks"""
-
-    @abstractmethod
-    def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
-        """Run document cleaning"""
-        raise NotImplementedError()
-
-
-class IdentityDocumentCleaner(BaseDocumentCleaner):
+class IdentityDocumentCleaner(PipelineComponent):
     """Returns all the chunks. Useful for testing."""
 
     def __call__(self, chunks: Sequence[Chunk]) -> list[Chunk]:
@@ -25,7 +15,7 @@ class IdentityDocumentCleaner(BaseDocumentCleaner):
         return list(chunks)
 
 
-class ChunkTypeFilter(BaseDocumentCleaner):
+class ChunkTypeFilter(PipelineComponent):
     """Filter out chunks of specified types."""
 
     def __init__(self, types_to_remove: list[str]) -> None:
@@ -53,7 +43,7 @@ class ChunkTypeFilter(BaseDocumentCleaner):
         ]
 
 
-class RemoveShortTableCells(BaseDocumentCleaner):
+class RemoveShortTableCells(PipelineComponent):
     """
     Remove table cells under a certain number of characters, or are all numeric.
 
@@ -88,7 +78,7 @@ class RemoveShortTableCells(BaseDocumentCleaner):
         return new_chunks
 
 
-class RemoveRepeatedAdjacentChunks(BaseDocumentCleaner):
+class RemoveRepeatedAdjacentChunks(PipelineComponent):
     """
     Remove chunks of the same type that are repeated, keeping the first.
 
@@ -143,5 +133,43 @@ class RemoveRepeatedAdjacentChunks(BaseDocumentCleaner):
                 case _:
                     # Same text as previous chunk of this type, skip it
                     continue
+
+        return new_chunks
+
+
+class AddHeadings(PipelineComponent):
+    """
+    Add headings to chunks.
+
+    Only works at a single-level. This means that (subheading -> heading) and
+    (text -> subheading) relationships will exist, but not (text -> heading) if there
+    is a subheading between them.
+    """
+
+    def __init__(self) -> None:
+        self.heading_types = {ChunkType.TITLE}
+        self.subheading_types = {ChunkType.SECTION_HEADING, ChunkType.PAGE_HEADER}
+
+    def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
+        """Add headings to chunks."""
+
+        current_heading = None
+        current_subheading = None
+
+        # Make a copy of the chunks
+        new_chunks = list(chunks)
+
+        for chunk in new_chunks:
+            if chunk.chunk_type in self.heading_types:
+                current_heading = chunk
+                # A heading is the top level, so we don't want it to have a heading
+                # itself
+                continue
+            elif chunk.chunk_type in self.subheading_types:
+                current_subheading = chunk
+                chunk.heading = current_heading
+                continue
+
+            chunk.heading = current_subheading or current_heading
 
         return new_chunks
