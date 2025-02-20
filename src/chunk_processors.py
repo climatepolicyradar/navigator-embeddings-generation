@@ -8,7 +8,9 @@ from typing import Sequence, Optional
 from logging import getLogger
 import re
 
-from src.models import Chunk, ChunkType, PipelineComponent
+from cpr_sdk.parser_models import BlockType
+
+from src.models import Chunk, PipelineComponent
 
 logger = getLogger(__name__)
 
@@ -32,7 +34,7 @@ class ChunkTypeFilter(PipelineComponent):
         """
         for _type in types_to_remove:
             try:
-                ChunkType(_type)
+                BlockType(_type)
             except NameError:
                 logger.warning(
                     f"Blocks to filter should be of a known block type, removing {_type} "
@@ -65,7 +67,7 @@ class RemoveShortTableCells(PipelineComponent):
         new_chunks: list[Chunk] = []
 
         for chunk in chunks:
-            if chunk.chunk_type != ChunkType.TABLE_CELL:
+            if chunk.chunk_type != BlockType.TABLE_CELL:
                 new_chunks.append(chunk)
                 continue
 
@@ -95,11 +97,10 @@ class RemoveRepeatedAdjacentChunks(PipelineComponent):
     def __init__(
         self,
         chunk_types=[
-            ChunkType.SECTION_HEADING,
-            ChunkType.TITLE,
-            ChunkType.PAGE_HEADER,
-            ChunkType.PAGE_FOOTER,
-            ChunkType.FOOTNOTE,
+            BlockType.SECTION_HEADING,
+            BlockType.TITLE,
+            BlockType.PAGE_HEADER,
+            BlockType.PAGE_FOOTER,
         ],
         ignore_case: bool = True,
     ) -> None:
@@ -115,7 +116,7 @@ class RemoveRepeatedAdjacentChunks(PipelineComponent):
     def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
         """Run repeated adjacent chunk filtering."""
         new_chunks: list[Chunk] = []
-        current_chunk_of_type: dict[ChunkType, Optional[str]] = {
+        current_chunk_of_type: dict[BlockType, Optional[str]] = {
             chunk_type: None for chunk_type in self.chunk_types
         }
 
@@ -153,8 +154,8 @@ class AddHeadings(PipelineComponent):
     """
 
     def __init__(self) -> None:
-        self.heading_types = {ChunkType.TITLE}
-        self.subheading_types = {ChunkType.SECTION_HEADING, ChunkType.PAGE_HEADER}
+        self.heading_types = {BlockType.TITLE, BlockType.TITLE_LOWER_CASE}
+        self.subheading_types = {BlockType.SECTION_HEADING, BlockType.PAGE_HEADER}
 
     def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
         """Add headings to chunks."""

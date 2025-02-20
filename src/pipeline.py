@@ -4,7 +4,7 @@ from logging import getLogger
 import numpy as np
 from cpr_sdk.parser_models import ParserOutput, PDFTextBlock
 
-from src.models import Chunk, ChunkType, PipelineComponent
+from src.models import Chunk, PipelineComponent
 from src.encoders import BaseEncoder
 
 logger = getLogger(__name__)
@@ -19,7 +19,7 @@ def parser_output_to_chunks(parser_output: ParserOutput) -> list[Chunk]:
         Chunk(
             id=text_block.text_block_id,
             text=text_block.to_string(),
-            chunk_type=ChunkType(text_block.type),
+            chunk_type=text_block.type,
             bounding_boxes=[text_block.coords]
             if isinstance(text_block, PDFTextBlock) and text_block.coords
             else None,
@@ -46,7 +46,7 @@ class Pipeline:
 
         self.pipeline_return_type = list[str] if self.encoder is None else np.ndarray
 
-    def get_empty_response(self) -> list[str] | np.ndarray:
+    def get_empty_response(self) -> list[Chunk] | np.ndarray:
         """Return an empty list or array depending on the pipeline configuration."""
         return [] if self.encoder is None else np.empty((0, self.encoder.dimension))
 
@@ -55,7 +55,7 @@ class Pipeline:
         document: ParserOutput,
         encoder_batch_size: Optional[int] = None,
         device: Optional[str] = None,
-    ) -> list[str] | np.ndarray:
+    ) -> list[Chunk] | np.ndarray:
         """Run the pipeline on a single document."""
 
         if self.encoder is not None and encoder_batch_size is None:
@@ -72,15 +72,14 @@ class Pipeline:
         if chunks == []:
             return self.get_empty_response()
 
-        serialized_text = [chunk.serialized_text or "NONE" for chunk in chunks]
-
         if self.encoder is None:
             if any(chunk.serialized_text is None for chunk in chunks):
                 logger.warning(
                     "Not all chunks have been serialized. Returning 'NONE' in place of those that are empty."
                 )
-            return serialized_text
+            return chunks
         else:
+            serialized_text = [chunk.serialized_text or "NONE" for chunk in chunks]
             return self.encoder.encode_batch(
                 text_batch=serialized_text,
                 batch_size=encoder_batch_size,  # type: ignore

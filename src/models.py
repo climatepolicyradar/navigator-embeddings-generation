@@ -1,27 +1,9 @@
 from typing import Optional
 from abc import ABC, abstractmethod
 
-from enum import Enum
 from pydantic import BaseModel
 
-
-class ChunkType(str, Enum):
-    """Possible types of chunk"""
-
-    # TODO: should this replace BlockType in the SDK?
-
-    TEXT = "Text"
-    TITLE = "Title"
-    LIST = "List"
-    TABLE = "Table"
-    TABLE_CELL = "TableCell"
-    FIGURE = "Figure"
-    PAGE_HEADER = "pageHeader"
-    PAGE_FOOTER = "pageFooter"
-    PAGE_NUMBER = "pageNumber"
-    SECTION_HEADING = "sectionHeading"
-    DOCUMENT_HEADER = "Document Header"
-    FOOTNOTE = "footnote"
+from cpr_sdk.parser_models import BlockType
 
 
 class Chunk(BaseModel):
@@ -29,7 +11,7 @@ class Chunk(BaseModel):
 
     id: str
     text: str
-    chunk_type: ChunkType
+    chunk_type: BlockType
     # TODO: do we want multiple headings here? this is what docling does.
     heading: Optional["Chunk"] = None
     # Bounding boxes can be arbitrary polygons according to Azure
