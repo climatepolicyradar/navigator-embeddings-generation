@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Optional
 from logging import getLogger
 
 import numpy as np
@@ -38,14 +38,10 @@ class Pipeline:
 
     def __init__(
         self,
-        chunker: PipelineComponent,
-        chunk_processors: Sequence[PipelineComponent],
-        serializer: PipelineComponent,
+        components: list[PipelineComponent],
         encoder: Optional[BaseEncoder] = None,
     ) -> None:
-        self.chunker = chunker
-        self.chunk_processors = chunk_processors
-        self.serializer = serializer
+        self.components = components
         self.encoder = encoder
 
         self.pipeline_return_type = list[str] if self.encoder is None else np.ndarray
@@ -69,24 +65,17 @@ class Pipeline:
 
         chunks = parser_output_to_chunks(document)
 
-        chunks: Sequence[Chunk] = self.chunker(chunks)
-
-        for cleaner in self.chunk_processors:
-            chunks = cleaner(chunks)
+        for component in self.components:
+            chunks = component(chunks)
 
         # If there are no chunks at this point, return an empty response
         if chunks == []:
             return self.get_empty_response()
 
-        serialized_chunks: list[Chunk] = self.serializer(chunks)
-        serialized_text = [
-            chunk.serialized_text or "NONE" for chunk in serialized_chunks
-        ]
+        serialized_text = [chunk.serialized_text or "NONE" for chunk in chunks]
 
         if self.encoder is None:
-            if not all(
-                hasattr(chunk, "serialized_text") for chunk in serialized_chunks
-            ):
+            if any(chunk.serialized_text is None for chunk in chunks):
                 logger.warning(
                     "Not all chunks have been serialized. Returning 'NONE' in place of those that are empty."
                 )

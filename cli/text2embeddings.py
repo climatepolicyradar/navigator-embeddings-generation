@@ -182,13 +182,13 @@ def run_embeddings_generation(
     encoder = SBERTEncoder(config.SBERT_MODEL)
 
     pipeline = Pipeline(
-        chunker=IdentityChunker(),
-        chunk_processors=[
+        components=[
+            IdentityChunker(),
             ChunkTypeFilter(types_to_remove=config.BLOCKS_TO_FILTER),
             RemoveShortTableCells(min_chars=10, remove_all_numeric=True),
             RemoveRepeatedAdjacentChunks(),
+            BasicSerializer(),
         ],
-        serializer=BasicSerializer(),
         encoder=encoder,
     )
 

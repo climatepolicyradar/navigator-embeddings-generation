@@ -12,9 +12,7 @@ def test_basic_pipeline(
     parser_output: ParserOutput = test_parser_output_source_url_supported_lang_data[0]
 
     basic_pipeline = Pipeline(
-        chunker=IdentityChunker(),
-        chunk_processors=[IdentityChunkProcessor()],
-        serializer=BasicSerializer(),
+        components=[IdentityChunker(), IdentityChunkProcessor(), BasicSerializer()]
     )
     result = basic_pipeline(parser_output)
     assert isinstance(result, list)
