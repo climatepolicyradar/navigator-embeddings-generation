@@ -44,12 +44,12 @@ class ChunkTypeFilter(BaseDocumentCleaner):
                 )
                 types_to_remove.remove(_type)
 
-        self.chunks_to_drop = types_to_remove
+        self.types_to_remove = types_to_remove
 
     def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
         """Run chunk type filtering."""
         return [
-            chunk for chunk in chunks if chunk.chunk_type not in self.chunks_to_drop
+            chunk for chunk in chunks if chunk.chunk_type not in self.types_to_remove
         ]
 
 
