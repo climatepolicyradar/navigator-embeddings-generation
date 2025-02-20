@@ -4,10 +4,7 @@ from logging import getLogger
 import numpy as np
 from cpr_sdk.parser_models import ParserOutput, PDFTextBlock
 
-from src.models import Chunk, ChunkType
-from src.chunkers import BaseChunker
-from src.document_cleaners import BaseDocumentCleaner
-from src.serializers import BaseSerializer
+from src.models import Chunk, ChunkType, PipelineComponent
 from src.encoders import BaseEncoder
 
 logger = getLogger(__name__)
@@ -41,9 +38,9 @@ class Pipeline:
 
     def __init__(
         self,
-        chunker: BaseChunker,
-        document_cleaners: Sequence[BaseDocumentCleaner],
-        serializer: BaseSerializer,
+        chunker: PipelineComponent,
+        document_cleaners: Sequence[PipelineComponent],
+        serializer: PipelineComponent,
         encoder: Optional[BaseEncoder] = None,
     ) -> None:
         self.chunker = chunker
@@ -81,7 +78,7 @@ class Pipeline:
         if chunks == []:
             return self.get_empty_response()
 
-        serialized_chunks: list[Chunk] = [self.serializer(chunk) for chunk in chunks]
+        serialized_chunks: list[Chunk] = self.serializer(chunks)
         serialized_text = [
             chunk.serialized_text or "NONE" for chunk in serialized_chunks
         ]
