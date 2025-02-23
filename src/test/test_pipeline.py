@@ -4,6 +4,7 @@ from src.pipeline import Pipeline
 from src.chunkers import IdentityChunker
 from src.chunk_processors import IdentityChunkProcessor
 from src.serializers import BasicSerializer
+from src.models import Chunk
 
 
 def test_basic_pipeline(
@@ -16,5 +17,5 @@ def test_basic_pipeline(
     )
     result = basic_pipeline(parser_output)
     assert isinstance(result, list)
-    assert all(isinstance(item, str) for item in result)
+    assert all(isinstance(item, Chunk) for item in result)
     assert len(result) == len(parser_output.text_blocks or [])
