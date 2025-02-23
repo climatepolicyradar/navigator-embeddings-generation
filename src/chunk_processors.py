@@ -101,6 +101,7 @@ class RemoveRepeatedAdjacentChunks(PipelineComponent):
             BlockType.TITLE,
             BlockType.PAGE_HEADER,
             BlockType.PAGE_FOOTER,
+            BlockType.FOOT_NOTE,
         ],
         ignore_case: bool = True,
     ) -> None:

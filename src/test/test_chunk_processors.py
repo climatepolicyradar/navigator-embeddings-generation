@@ -141,7 +141,7 @@ def test_remove_repeated_adjacent_chunks():
         ),
         Chunk(
             text="footnote",
-            chunk_type=BlockType.FOOTNOTE,
+            chunk_type=BlockType.FOOT_NOTE,
             bounding_boxes=None,
             pages=None,
             id="5",
@@ -155,7 +155,7 @@ def test_remove_repeated_adjacent_chunks():
         ),
         Chunk(
             text="footnote",
-            chunk_type=BlockType.FOOTNOTE,
+            chunk_type=BlockType.FOOT_NOTE,
             bounding_boxes=None,
             pages=None,
             id="7",
