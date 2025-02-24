@@ -21,7 +21,7 @@ from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3
 from src.pipeline import Pipeline
 from src.chunkers import IdentityChunker
 from src.serializers import BasicSerializer
-from src.document_cleaners import (
+from src.chunk_processors import (
     ChunkTypeFilter,
     RemoveShortTableCells,
     RemoveRepeatedAdjacentChunks,
@@ -182,13 +182,13 @@ def run_embeddings_generation(
     encoder = SBERTEncoder(config.SBERT_MODEL)
 
     pipeline = Pipeline(
-        chunker=IdentityChunker(),
-        document_cleaners=[
+        components=[
+            IdentityChunker(),
             ChunkTypeFilter(types_to_remove=config.BLOCKS_TO_FILTER),
             RemoveShortTableCells(min_chars=10, remove_all_numeric=True),
             RemoveRepeatedAdjacentChunks(),
+            BasicSerializer(),
         ],
-        serializer=BasicSerializer(),
         encoder=encoder,
     )
 
