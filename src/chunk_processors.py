@@ -181,3 +181,41 @@ class AddHeadings(PipelineComponent):
             chunk.heading = current_subheading or current_heading
 
         return new_chunks
+
+
+class RemoveRegexPattern(PipelineComponent):
+    """
+    Remove text from chunks that matches a regex pattern.
+
+    If the chunk's entire text matches the regex pattern, remove the chunk. If it
+    just contains text with the regex pattern, replace the pattern with the text
+    specified.
+    """
+
+    def __init__(self, pattern: str, replace_with: str) -> None:
+        self.pattern = pattern
+        self.replace_with = replace_with
+
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
+        """Run regex pattern removal."""
+        if not hasattr(self, "pattern"):
+            raise ValueError("No pattern was set. Please set a pattern in __init__.")
+
+        new_chunks: list[Chunk] = []
+
+        for chunk in chunks:
+            # If the entire text matches the pattern, skip this chunk
+            if re.match(f"^{self.pattern}$", chunk.text):
+                continue
+
+            # Otherwise remove any matches of the pattern from the text
+            new_text = re.sub(self.pattern, self.replace_with, chunk.text)
+            new_chunk = chunk.model_copy()
+            new_chunk.text = new_text.strip()
+
+            # Match cases where the text is made up of multiple repeated instances of
+            # the pattern.
+            if new_chunk.text:
+                new_chunks.append(new_chunk)
+
+        return new_chunks

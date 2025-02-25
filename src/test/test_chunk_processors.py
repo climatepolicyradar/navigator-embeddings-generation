@@ -5,6 +5,7 @@ from src.chunk_processors import (
     RemoveShortTableCells,
     RemoveRepeatedAdjacentChunks,
     AddHeadings,
+    RemoveRegexPattern,
 )
 
 
@@ -273,3 +274,60 @@ def test_add_headings():
 
     # Text under the second section heading
     assert results[6].heading.id == results[5].id  # type: ignore
+
+
+def test_remove_selection_patterns():
+    """Test removal of :selected: and :unselected: patterns from chunks."""
+    cleaner = RemoveRegexPattern(pattern=r"\s?:(?:un)?selected:\s?", replace_with=" ")
+    chunks = [
+        Chunk(
+            text=":selected:",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="Some :selected: text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="Multiple :selected: and :unselected: patterns",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text=":unselected:",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text=":unselected: :selected:",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="Normal text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+    ]
+
+    result = cleaner(chunks)
+
+    assert len(result) == 3
+
+    assert result[0].text == "Some text"
+    assert result[1].text == "Multiple and patterns"
+    assert result[2].text == "Normal text"
