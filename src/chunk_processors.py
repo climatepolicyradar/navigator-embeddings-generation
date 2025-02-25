@@ -287,7 +287,17 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
 
 class CombineTextChunksIntoList(PipelineComponent):
-    """Combines consecutive text chunks that match a list item pattern into list chunks."""
+    """
+    Combines consecutive text chunks that match a list item pattern into list chunks.
+
+    If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
+    should go before that.
+
+    This doesn't handle lots of cases, and could be good to revisit at some point!
+    TODO: handle cases where a text block contains a list with more than one list item
+        (and potentially some non-list text)
+    TODO: handle cases where a list item is split across multiple text blocks
+    """
 
     def __init__(self, text_separator: str = "\n") -> None:
         self.text_separator = text_separator
