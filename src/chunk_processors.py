@@ -284,3 +284,51 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
             new_chunks.append(current_chunk)
 
         return new_chunks
+
+
+class CombineTextChunksIntoList(PipelineComponent):
+    """Combines consecutive text chunks that match a list item pattern into list chunks."""
+
+    def __init__(self, text_separator: str = "\n") -> None:
+        self.text_separator = text_separator
+        self.list_item_pattern = (
+            r"(^|\n)(?:•|-|(?:[\(|\[]?[0-9a-zA-Z]{0,3}[\.|\)|\]])).*?"
+        )
+
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
+        """Run list item combining."""
+        new_chunks: list[Chunk] = []
+        current_list_chunk = None
+
+        for chunk in chunks:
+            # Skip if not a text chunk
+            if chunk.chunk_type != BlockType.TEXT:
+                if current_list_chunk:
+                    new_chunks.append(current_list_chunk)
+                    current_list_chunk = None
+                new_chunks.append(chunk)
+                continue
+
+            # Check if the chunk text matches list item pattern
+            if re.match(self.list_item_pattern, chunk.text):
+                if current_list_chunk:
+                    # Merge with existing list chunk
+                    current_list_chunk = current_list_chunk.merge(
+                        chunk, text_separator=self.text_separator
+                    )
+                else:
+                    # Create new list chunk
+                    current_list_chunk = chunk.model_copy()
+                    current_list_chunk.chunk_type = BlockType.LIST
+            else:
+                # Not a list item, add previous list chunk if exists
+                if current_list_chunk:
+                    new_chunks.append(current_list_chunk)
+                    current_list_chunk = None
+                new_chunks.append(chunk)
+
+        # Add final list chunk if exists
+        if current_list_chunk:
+            new_chunks.append(current_list_chunk)
+
+        return new_chunks

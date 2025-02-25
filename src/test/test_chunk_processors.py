@@ -10,6 +10,7 @@ from src.chunk_processors import (
     RemoveRegexPattern,
     RemoveFalseCheckboxes,
     CombineSuccessiveSameTypeChunks,
+    CombineTextChunksIntoList,
 )
 
 
@@ -347,7 +348,8 @@ def test_remove_selection_patterns(processor):
 def test_combine_successive_same_type_chunks():
     """Test combining successive chunks of the same type."""
     processor = CombineSuccessiveSameTypeChunks(
-        chunk_types=[BlockType.TEXT, BlockType.PAGE_HEADER]
+        chunk_types=[BlockType.TEXT, BlockType.PAGE_HEADER],
+        text_separator=" ",
     )
     chunks = [
         Chunk(
@@ -405,3 +407,81 @@ def test_combine_successive_same_type_chunks():
     assert result[2].chunk_type == BlockType.TITLE
     assert result[3].text == "Third text"
     assert result[3].chunk_type == BlockType.TEXT
+
+
+def test_combine_text_chunks_into_list():
+    """Test combining text chunks into list chunks when they match list patterns."""
+    processor = CombineTextChunksIntoList()
+    chunks = [
+        Chunk(
+            text="Regular text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="• First bullet point",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="- Second bullet point",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text="1. Numbered item",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="Title",
+            chunk_type=BlockType.TITLE,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+        Chunk(
+            text="a) Another list item",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="6",
+        ),
+        Chunk(
+            text="[b] Final list item",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="7",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    assert len(result) == 4
+    # First chunk should be regular text
+    assert result[0].text == "Regular text"
+    assert result[0].chunk_type == BlockType.TEXT
+
+    # Second chunk should be combined list items
+    assert (
+        result[1].text
+        == "• First bullet point\n- Second bullet point\n1. Numbered item"
+    )
+    assert result[1].chunk_type == BlockType.LIST
+
+    # Third chunk should be the title
+    assert result[2].text == "Title"
+    assert result[2].chunk_type == BlockType.TITLE
+
+    # Fourth chunk should be combined list items
+    assert result[3].text == "a) Another list item\n[b] Final list item"
+    assert result[3].chunk_type == BlockType.LIST
