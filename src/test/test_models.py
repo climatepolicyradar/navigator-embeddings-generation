@@ -29,6 +29,43 @@ def test_merge_with_bounding_boxes_and_pages():
     assert merged.bounding_boxes == [[(0, 0), (1, 1)], [(2, 2), (3, 3)]]
 
 
+def test_merge_successive() -> None:
+    """Test successively merging chunks."""
+    chunk1 = Chunk(
+        id="1",
+        text="Hello",
+        chunk_type=BlockType.TEXT,
+        bounding_boxes=[[(0, 0), (1, 1)]],
+        pages=[1],
+    )
+    chunk2 = Chunk(
+        id="2",
+        text="World",
+        chunk_type=BlockType.TEXT,
+        bounding_boxes=[[(2, 2), (3, 3)]],
+        pages=[2],
+    )
+    chunk3 = Chunk(
+        id="3",
+        text="!",
+        chunk_type=BlockType.TEXT,
+        bounding_boxes=[[(4, 4), (5, 5)]],
+        pages=[3],
+    )
+
+    merged = chunk1.merge(chunk2).merge(chunk3, text_separator="")
+
+    assert merged.id == "1"
+    assert merged.text == "Hello World!"
+    assert merged.chunk_type == BlockType.TEXT
+    assert merged.pages == [1, 2, 3]
+    assert merged.bounding_boxes == [
+        [(0, 0), (1, 1)],
+        [(2, 2), (3, 3)],
+        [(4, 4), (5, 5)],
+    ]
+
+
 def test_merge_incompatible_properties():
     """Test merging chunks with incompatible properties raises ValueError."""
     chunk1 = Chunk(
