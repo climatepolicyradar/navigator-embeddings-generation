@@ -1,3 +1,5 @@
+import pytest
+
 from cpr_sdk.parser_models import BlockType
 
 from src.models import Chunk
@@ -6,6 +8,7 @@ from src.chunk_processors import (
     RemoveRepeatedAdjacentChunks,
     AddHeadings,
     RemoveRegexPattern,
+    RemoveFalseCheckboxes,
 )
 
 
@@ -276,9 +279,16 @@ def test_add_headings():
     assert results[6].heading.id == results[5].id  # type: ignore
 
 
-def test_remove_selection_patterns():
+@pytest.mark.parametrize(
+    "processor",
+    [
+        RemoveRegexPattern(pattern=r"\s?:(?:un)?selected:\s?", replace_with=" "),
+        RemoveFalseCheckboxes(),
+    ],
+)
+def test_remove_selection_patterns(processor):
     """Test removal of :selected: and :unselected: patterns from chunks."""
-    cleaner = RemoveRegexPattern(pattern=r"\s?:(?:un)?selected:\s?", replace_with=" ")
+
     chunks = [
         Chunk(
             text=":selected:",
@@ -324,7 +334,7 @@ def test_remove_selection_patterns():
         ),
     ]
 
-    result = cleaner(chunks)
+    result = processor(chunks)
 
     assert len(result) == 3
 

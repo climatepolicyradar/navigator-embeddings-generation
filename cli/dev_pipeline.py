@@ -23,9 +23,8 @@ def run_on_document(document_path: Path):
             chunk_processors.RemoveShortTableCells(),
             chunk_processors.RemoveRepeatedAdjacentChunks(),
             chunk_processors.AddHeadings(),
-            chunk_processors.ChunkTypeFilter(
-                types_to_remove=["pageHeader", "pageFooter", "pageNumber"]
-            ),
+            chunk_processors.ChunkTypeFilter(types_to_remove=["pageNumber"]),
+            chunk_processors.RemoveFalseCheckboxes(),
             chunkers.IdentityChunker(),
             serializers.BasicSerializer(),
         ]

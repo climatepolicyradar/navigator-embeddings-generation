@@ -219,3 +219,14 @@ class RemoveRegexPattern(PipelineComponent):
                 new_chunks.append(new_chunk)
 
         return new_chunks
+
+
+class RemoveFalseCheckboxes(RemoveRegexPattern):
+    """
+    Remove false checkboxes from the Azure output.
+
+    These are :selected: and :unselected: patterns.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(pattern=r"\s?:(?:un)?selected:\s?", replace_with=" ")
