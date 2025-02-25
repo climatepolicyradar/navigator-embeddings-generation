@@ -58,7 +58,7 @@ class RemoveShortTableCells(PipelineComponent):
     These aren't useful for encoding or search.
     """
 
-    def __init__(self, min_chars: int = 10, remove_all_numeric: bool = True) -> None:
+    def __init__(self, min_chars: int = 0, remove_all_numeric: bool = True) -> None:
         self.min_chars = min_chars
         self.remove_all_numeric = remove_all_numeric
 
