@@ -230,3 +230,44 @@ class RemoveFalseCheckboxes(RemoveRegexPattern):
 
     def __init__(self) -> None:
         super().__init__(pattern=r"\s?:(?:un)?selected:\s?", replace_with=" ")
+
+
+class CombineSuccessiveSameTypeChunks(PipelineComponent):
+    """Combines successive chunks of the same type in a sequence of chunks."""
+
+    def __init__(self, chunk_types: list[BlockType]) -> None:
+        self.chunk_types = chunk_types
+
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
+        """Run chunk combining."""
+        new_chunks: list[Chunk] = []
+        current_chunk = None
+
+        for chunk in chunks:
+            # If the chunk is in types we don't want to combine, we add the previous
+            # working 'current_chunk' if there is one.
+            if chunk.chunk_type not in self.chunk_types:
+                if current_chunk:
+                    new_chunks.append(current_chunk)
+                    current_chunk = None
+                # We also add this chunk and skip to the next iteration.
+                new_chunks.append(chunk)
+                continue
+
+            # First time seeing a chunk of a type we want to handle
+            if not current_chunk:
+                current_chunk = chunk
+                continue
+
+            # If it's the same type, merge the chunks.
+            if chunk.chunk_type == current_chunk.chunk_type:
+                current_chunk = current_chunk.merge(chunk)
+            # Otherwise, add the current chunk and set a new one.
+            else:
+                new_chunks.append(current_chunk)
+                current_chunk = chunk
+
+        if current_chunk:
+            new_chunks.append(current_chunk)
+
+        return new_chunks

@@ -9,6 +9,7 @@ from src.chunk_processors import (
     AddHeadings,
     RemoveRegexPattern,
     RemoveFalseCheckboxes,
+    CombineSuccessiveSameTypeChunks,
 )
 
 
@@ -341,3 +342,66 @@ def test_remove_selection_patterns(processor):
     assert result[0].text == "Some text"
     assert result[1].text == "Multiple and patterns"
     assert result[2].text == "Normal text"
+
+
+def test_combine_successive_same_type_chunks():
+    """Test combining successive chunks of the same type."""
+    processor = CombineSuccessiveSameTypeChunks(
+        chunk_types=[BlockType.TEXT, BlockType.PAGE_HEADER]
+    )
+    chunks = [
+        Chunk(
+            text="First text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="Second text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="Header 1",
+            chunk_type=BlockType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text="Header 2",
+            chunk_type=BlockType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="Title",
+            chunk_type=BlockType.TITLE,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+        Chunk(
+            text="Third text",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="6",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    assert len(result) == 4
+    assert result[0].text == "First text Second text"
+    assert result[0].chunk_type == BlockType.TEXT
+    assert result[1].text == "Header 1 Header 2"
+    assert result[1].chunk_type == BlockType.PAGE_HEADER
+    assert result[2].text == "Title"
+    assert result[2].chunk_type == BlockType.TITLE
+    assert result[3].text == "Third text"
+    assert result[3].chunk_type == BlockType.TEXT
