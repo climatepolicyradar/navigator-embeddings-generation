@@ -15,6 +15,25 @@ from src.models import Chunk, PipelineComponent
 logger = getLogger(__name__)
 
 
+def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
+    """
+    Filter out unknown types from a list of types.
+
+    If the type is unknown, log a warning and remove it from the list.
+    """
+    for _type in types:
+        try:
+            BlockType(_type)
+        except NameError:
+            logger.warning(
+                f"Blocks to filter should be of a known block type, removing {_type} "
+                f"from the list. "
+            )
+            types.remove(_type)
+
+    return types
+
+
 class IdentityChunkProcessor(PipelineComponent):
     """Returns all the chunks. Useful for testing."""
 
@@ -32,17 +51,8 @@ class ChunkTypeFilter(PipelineComponent):
 
         :param types_to_remove: the types of chunk to remove
         """
-        for _type in types_to_remove:
-            try:
-                BlockType(_type)
-            except NameError:
-                logger.warning(
-                    f"Blocks to filter should be of a known block type, removing {_type} "
-                    f"from the list. "
-                )
-                types_to_remove.remove(_type)
 
-        self.types_to_remove = types_to_remove
+        self.types_to_remove = filter_and_warn_for_unknown_types(types_to_remove)
 
     def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
         """Run chunk type filtering."""
@@ -235,8 +245,9 @@ class RemoveFalseCheckboxes(RemoveRegexPattern):
 class CombineSuccessiveSameTypeChunks(PipelineComponent):
     """Combines successive chunks of the same type in a sequence of chunks."""
 
-    def __init__(self, chunk_types: list[BlockType]) -> None:
-        self.chunk_types = chunk_types
+    def __init__(self, chunk_types: list[str], text_separator="\n") -> None:
+        self.chunk_types = filter_and_warn_for_unknown_types(chunk_types)
+        self.text_separator = text_separator
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
         """Run chunk combining."""
@@ -261,7 +272,9 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
             # If it's the same type, merge the chunks.
             if chunk.chunk_type == current_chunk.chunk_type:
-                current_chunk = current_chunk.merge(chunk)
+                current_chunk = current_chunk.merge(
+                    chunk, text_separator=self.text_separator
+                )
             # Otherwise, add the current chunk and set a new one.
             else:
                 new_chunks.append(current_chunk)
