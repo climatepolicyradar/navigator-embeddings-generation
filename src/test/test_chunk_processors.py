@@ -421,18 +421,11 @@ def test_combine_text_chunks_into_list():
             id="1",
         ),
         Chunk(
-            text="• First bullet point",
+            text="• First bullet point\n- Second bullet point\n1. Third bullet point",
             chunk_type=BlockType.TEXT,
             bounding_boxes=None,
             pages=None,
             id="2",
-        ),
-        Chunk(
-            text="- Second bullet point",
-            chunk_type=BlockType.TEXT,
-            bounding_boxes=None,
-            pages=None,
-            id="3",
         ),
         Chunk(
             text="1. Numbered item",
@@ -474,7 +467,7 @@ def test_combine_text_chunks_into_list():
     # Second chunk should be combined list items
     assert (
         result[1].text
-        == "• First bullet point\n- Second bullet point\n1. Numbered item"
+        == "• First bullet point\n- Second bullet point\n1. Third bullet point\n1. Numbered item"
     )
     assert result[1].chunk_type == BlockType.LIST
 

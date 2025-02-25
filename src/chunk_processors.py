@@ -293,9 +293,6 @@ class CombineTextChunksIntoList(PipelineComponent):
     If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
     should go before that.
 
-    This doesn't handle lots of cases, and could be good to revisit at some point!
-    TODO: handle cases where a text block contains a list with more than one list item
-        (and potentially some non-list text)
     TODO: handle cases where a list item is split across multiple text blocks
     """
 
@@ -319,8 +316,8 @@ class CombineTextChunksIntoList(PipelineComponent):
                 new_chunks.append(chunk)
                 continue
 
-            # Check if the chunk text matches list item pattern
-            if re.match(self.list_item_pattern, chunk.text):
+            # If there is any list item within the chunk, treat it all as a list
+            if re.findall(self.list_item_pattern, chunk.text):
                 if current_list_chunk:
                     # Merge with existing list chunk
                     current_list_chunk = current_list_chunk.merge(
