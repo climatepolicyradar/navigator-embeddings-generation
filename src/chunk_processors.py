@@ -15,6 +15,30 @@ from src.models import Chunk, PipelineComponent
 logger = getLogger(__name__)
 
 
+def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
+    """
+    Filter out unknown types from a list of types.
+
+    If the type is unknown, log a warning and remove it from the list.
+    """
+
+    types_to_remove: list[str] = []
+
+    for _type in types:
+        try:
+            BlockType(_type)
+        except NameError:
+            logger.warning(
+                f"Blocks to filter should be of a known block type, removing {_type} "
+                f"from the list. "
+            )
+            types_to_remove.append(_type)
+
+    types = [t for t in types if t not in types_to_remove]
+
+    return types
+
+
 class IdentityChunkProcessor(PipelineComponent):
     """Returns all the chunks. Useful for testing."""
 
@@ -32,17 +56,8 @@ class ChunkTypeFilter(PipelineComponent):
 
         :param types_to_remove: the types of chunk to remove
         """
-        for _type in types_to_remove:
-            try:
-                BlockType(_type)
-            except NameError:
-                logger.warning(
-                    f"Blocks to filter should be of a known block type, removing {_type} "
-                    f"from the list. "
-                )
-                types_to_remove.remove(_type)
 
-        self.types_to_remove = types_to_remove
+        self.types_to_remove = filter_and_warn_for_unknown_types(types_to_remove)
 
     def __call__(self, chunks: Sequence[Chunk]) -> Sequence[Chunk]:
         """Run chunk type filtering."""
@@ -235,8 +250,9 @@ class RemoveFalseCheckboxes(RemoveRegexPattern):
 class CombineSuccessiveSameTypeChunks(PipelineComponent):
     """Combines successive chunks of the same type in a sequence of chunks."""
 
-    def __init__(self, chunk_types: list[BlockType]) -> None:
-        self.chunk_types = chunk_types
+    def __init__(self, chunk_types: list[str], text_separator="\n") -> None:
+        self.chunk_types = filter_and_warn_for_unknown_types(chunk_types)
+        self.text_separator = text_separator
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
         """Run chunk combining."""
@@ -261,7 +277,9 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
             # If it's the same type, merge the chunks.
             if chunk.chunk_type == current_chunk.chunk_type:
-                current_chunk = current_chunk.merge(chunk)
+                current_chunk = current_chunk.merge(
+                    chunk, text_separator=self.text_separator
+                )
             # Otherwise, add the current chunk and set a new one.
             else:
                 new_chunks.append(current_chunk)
@@ -269,5 +287,60 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
         if current_chunk:
             new_chunks.append(current_chunk)
+
+        return new_chunks
+
+
+class CombineTextChunksIntoList(PipelineComponent):
+    """
+    Combines consecutive text chunks that match a list item pattern into list chunks.
+
+    If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
+    should go before that.
+
+    TODO: handle cases where a list item is split across multiple text blocks
+    """
+
+    def __init__(self, text_separator: str = "\n") -> None:
+        self.text_separator = text_separator
+        self.list_item_pattern = (
+            r"(^|\n)(?:•|-|(?:[\(|\[]?[0-9a-zA-Z]{0,3}[\.|\)|\]])).*?"
+        )
+
+    def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
+        """Run list item combining."""
+        new_chunks: list[Chunk] = []
+        current_list_chunk = None
+
+        for chunk in chunks:
+            # Skip if not a text chunk
+            if chunk.chunk_type != BlockType.TEXT:
+                if current_list_chunk:
+                    new_chunks.append(current_list_chunk)
+                    current_list_chunk = None
+                new_chunks.append(chunk)
+                continue
+
+            # If there is any list item within the chunk, treat it all as a list
+            elif re.findall(self.list_item_pattern, chunk.text):
+                if current_list_chunk:
+                    # Merge with existing list chunk
+                    current_list_chunk = current_list_chunk.merge(
+                        chunk, text_separator=self.text_separator
+                    )
+                else:
+                    # Create new list chunk
+                    current_list_chunk = chunk.model_copy()
+                    current_list_chunk.chunk_type = BlockType.LIST
+            else:
+                # Not a list item, add previous list chunk if exists
+                if current_list_chunk:
+                    new_chunks.append(current_list_chunk)
+                    current_list_chunk = None
+                new_chunks.append(chunk)
+
+        # Add final list chunk if exists
+        if current_list_chunk:
+            new_chunks.append(current_list_chunk)
 
         return new_chunks
