@@ -21,6 +21,9 @@ def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
 
     If the type is unknown, log a warning and remove it from the list.
     """
+
+    types_to_remove: list[str] = []
+
     for _type in types:
         try:
             BlockType(_type)
@@ -29,7 +32,9 @@ def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
                 f"Blocks to filter should be of a known block type, removing {_type} "
                 f"from the list. "
             )
-            types.remove(_type)
+            types_to_remove.append(_type)
+
+    types = [t for t in types if t not in types_to_remove]
 
     return types
 
