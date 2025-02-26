@@ -322,7 +322,7 @@ class CombineTextChunksIntoList(PipelineComponent):
                 continue
 
             # If there is any list item within the chunk, treat it all as a list
-            if re.findall(self.list_item_pattern, chunk.text):
+            elif re.findall(self.list_item_pattern, chunk.text):
                 if current_list_chunk:
                     # Merge with existing list chunk
                     current_list_chunk = current_list_chunk.merge(
