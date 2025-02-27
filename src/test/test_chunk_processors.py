@@ -348,7 +348,7 @@ def test_remove_selection_patterns(processor):
 def test_combine_successive_same_type_chunks():
     """Test combining successive chunks of the same type."""
     processor = CombineSuccessiveSameTypeChunks(
-        chunk_types=[BlockType.TEXT, BlockType.PAGE_HEADER],
+        chunk_types_to_combine=[BlockType.TEXT, BlockType.PAGE_HEADER],
         text_separator=" ",
     )
     chunks = [

@@ -24,7 +24,7 @@ def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
 
     types_to_remove: list[str] = []
 
-    for _type in types:
+    for _type in set(types):
         try:
             BlockType(_type)
         except NameError:
@@ -213,8 +213,6 @@ class RemoveRegexPattern(PipelineComponent):
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
         """Run regex pattern removal."""
-        if not hasattr(self, "pattern"):
-            raise ValueError("No pattern was set. Please set a pattern in __init__.")
 
         new_chunks: list[Chunk] = []
 
@@ -248,10 +246,15 @@ class RemoveFalseCheckboxes(RemoveRegexPattern):
 
 
 class CombineSuccessiveSameTypeChunks(PipelineComponent):
-    """Combines successive chunks of the same type in a sequence of chunks."""
+    """
+    Combines successive chunks of the same type in a sequence of chunks.
 
-    def __init__(self, chunk_types: list[str], text_separator="\n") -> None:
-        self.chunk_types = filter_and_warn_for_unknown_types(chunk_types)
+    :param chunk_types_to_combine: chunk types to be considered for combining. Only
+    chunks of the same type will be combined.
+    """
+
+    def __init__(self, chunk_types_to_combine: list[str], text_separator="\n") -> None:
+        self.chunk_types = filter_and_warn_for_unknown_types(chunk_types_to_combine)
         self.text_separator = text_separator
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
