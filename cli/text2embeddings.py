@@ -25,6 +25,7 @@ from src.chunk_processors import (
     ChunkTypeFilter,
     RemoveShortTableCells,
     RemoveRepeatedAdjacentChunks,
+    RemoveFalseCheckboxes,
 )
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -185,9 +186,10 @@ def run_embeddings_generation(
         components=[
             IdentityChunker(),
             ChunkTypeFilter(types_to_remove=config.BLOCKS_TO_FILTER),
-            RemoveShortTableCells(min_chars=10, remove_all_numeric=True),
+            RemoveShortTableCells(min_chars=0, remove_all_numeric=True),
             RemoveRepeatedAdjacentChunks(),
             BasicSerializer(),
+            RemoveFalseCheckboxes(),
         ],
         encoder=encoder,
     )
