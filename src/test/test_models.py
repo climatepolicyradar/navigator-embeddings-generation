@@ -20,7 +20,7 @@ def test_merge_with_bounding_boxes_and_pages():
         pages=[2],
     )
 
-    merged = chunk1.merge(chunk2)
+    merged = chunk1.merge([chunk2])
 
     assert merged.id == "1"
     assert merged.text == "Hello World"
@@ -29,11 +29,11 @@ def test_merge_with_bounding_boxes_and_pages():
     assert merged.bounding_boxes == [[(0, 0), (1, 1)], [(2, 2), (3, 3)]]
 
 
-def test_merge_successive() -> None:
+def test_merge_multiple() -> None:
     """Test successively merging chunks."""
     chunk1 = Chunk(
         id="1",
-        text="Hello",
+        text="Hello ",
         chunk_type=BlockType.TEXT,
         bounding_boxes=[[(0, 0), (1, 1)]],
         pages=[1],
@@ -53,7 +53,7 @@ def test_merge_successive() -> None:
         pages=[3],
     )
 
-    merged = chunk1.merge(chunk2).merge(chunk3, text_separator="")
+    merged = chunk1.merge([chunk2, chunk3], text_separator="")
 
     assert merged.id == "1"
     assert merged.text == "Hello World!"
@@ -80,7 +80,7 @@ def test_merge_incompatible_properties():
     )
 
     with pytest.raises(ValueError):
-        chunk1.merge(chunk2)
+        chunk1.merge([chunk2])
 
 
 def test_merge_with_optional_properties():
@@ -110,7 +110,7 @@ def test_merge_with_optional_properties():
         heading=None,
     )
 
-    merged = chunk1.merge(chunk2)
+    merged = chunk1.merge([chunk2])
     assert merged.tokens is None
     assert merged.heading is None
 
@@ -124,5 +124,5 @@ def test_merge_custom_separator():
         id="2", text="World", chunk_type=BlockType.TEXT, bounding_boxes=None, pages=None
     )
 
-    merged = chunk1.merge(chunk2, text_separator="\n")
+    merged = chunk1.merge([chunk2], text_separator="\n")
     assert merged.text == "Hello\nWorld"

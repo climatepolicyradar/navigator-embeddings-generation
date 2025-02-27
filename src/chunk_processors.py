@@ -281,7 +281,7 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
             # If it's the same type, merge the chunks.
             if chunk.chunk_type == current_chunk.chunk_type:
                 current_chunk = current_chunk.merge(
-                    chunk, text_separator=self.text_separator
+                    [chunk], text_separator=self.text_separator
                 )
             # Otherwise, add the current chunk and set a new one.
             else:
@@ -329,7 +329,7 @@ class CombineTextChunksIntoList(PipelineComponent):
                 if current_list_chunk:
                     # Merge with existing list chunk
                     current_list_chunk = current_list_chunk.merge(
-                        chunk, text_separator=self.text_separator
+                        [chunk], text_separator=self.text_separator
                     )
                 else:
                     # Create new list chunk
