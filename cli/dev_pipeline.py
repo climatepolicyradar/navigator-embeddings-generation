@@ -26,6 +26,7 @@ def run_on_document(document_path: Path):
             chunk_processors.ChunkTypeFilter(types_to_remove=["pageNumber"]),
             chunk_processors.RemoveFalseCheckboxes(),
             chunk_processors.CombineTextChunksIntoList(),
+            chunk_processors.SplitTextIntoSentences(),
             chunkers.IdentityChunker(),
             serializers.BasicSerializer(),
         ]
