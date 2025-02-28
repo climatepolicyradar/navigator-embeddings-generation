@@ -347,3 +347,76 @@ class CombineTextChunksIntoList(PipelineComponent):
             new_chunks.append(current_list_chunk)
 
         return new_chunks
+
+
+class SplitTextIntoSentences(PipelineComponent):
+    """
+    Split chunks of type TEXT in to sentences.
+
+    Handles sentences which go across chunks.
+    """
+
+    def __init__(self) -> None:
+        # First pattern matches only complete sentences
+        self.complete_sentence_pattern = re.compile(
+            r"[^.!?…]+[.!?…]+(?=\s|\Z)", re.MULTILINE
+        )
+        # Second pattern matches any remaining text
+        self.remaining_text_pattern = re.compile(r"[^.!?…]+", re.MULTILINE)
+
+    def __call__(self, chunks: Sequence[Chunk]) -> list[Chunk]:
+        """Run sentence splitting."""
+        new_chunks: list[Chunk] = []
+        incomplete_chunk = None
+
+        for chunk in chunks:
+            if chunk.chunk_type != BlockType.TEXT:
+                if incomplete_chunk:
+                    # Add any incomplete sentence before non-text chunk
+                    new_chunks.append(incomplete_chunk)
+                    incomplete_chunk = None
+                new_chunks.append(chunk)
+                continue
+
+            # If we have an incomplete sentence from previous chunk, merge it with current
+            if incomplete_chunk:
+                text = f"{incomplete_chunk.text} {chunk.text}".strip()
+                current_chunk = incomplete_chunk.merge([chunk], text_separator=" ")
+                current_chunk.text = text
+            else:
+                text = chunk.text
+                current_chunk = chunk
+
+            complete_sentences = [
+                s.strip()
+                for s in self.complete_sentence_pattern.findall(text)
+                if s.strip()
+            ]
+
+            # Get the remaining text after removing complete sentences
+            remaining_text = text
+            for sentence in complete_sentences:
+                sentence_start = remaining_text.find(sentence)
+                sentence_end = sentence_start + len(sentence)
+                remaining_text = (
+                    remaining_text[:sentence_start] + remaining_text[sentence_end:]
+                ).strip()
+
+            # Add complete sentences as new chunks
+            for sentence in complete_sentences:
+                new_chunk = current_chunk.model_copy(update={"text": sentence})
+                new_chunks.append(new_chunk)
+
+            # Keep track of any remaining incomplete sentence
+            if remaining_text:
+                incomplete_chunk = current_chunk.model_copy(
+                    update={"text": remaining_text}
+                )
+            else:
+                incomplete_chunk = None
+
+        # Handle any remaining incomplete sentence at the end
+        if incomplete_chunk:
+            new_chunks.append(incomplete_chunk)
+
+        return new_chunks

@@ -11,6 +11,7 @@ from src.chunk_processors import (
     RemoveFalseCheckboxes,
     CombineSuccessiveSameTypeChunks,
     CombineTextChunksIntoList,
+    SplitTextIntoSentences,
 )
 
 
@@ -478,3 +479,139 @@ def test_combine_text_chunks_into_list():
     # Fourth chunk should be combined list items
     assert result[3].text == "a) Another list item\n[b] Final list item"
     assert result[3].chunk_type == BlockType.LIST
+
+
+def test_split_text_into_sentences_basic():
+    """Test splitting text chunks into sentences."""
+    processor = SplitTextIntoSentences()
+    chunks = [
+        Chunk(
+            text="This is sentence one... This is sentence two.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="This is an incomplete",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="sentence that spans chunks.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text="A title chunk",
+            chunk_type=BlockType.TITLE,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="Back to sentences! With multiple parts.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    assert len(result) == 6
+    assert result[0].text == "This is sentence one..."
+    assert result[1].text == "This is sentence two."
+    assert result[2].text == "This is an incomplete sentence that spans chunks."
+    assert result[3].text == "A title chunk"
+    assert result[3].chunk_type == BlockType.TITLE
+    assert result[4].text == "Back to sentences!"
+    assert result[5].text == "With multiple parts."
+
+    assert all(
+        chunks[i].chunk_type == BlockType.TEXT for i in range(len(chunks)) if i != 3
+    )
+
+
+def test_split_text_into_sentences_preserve_non_text_chunks():
+    """Test that non-text chunks are preserved in order."""
+    processor = SplitTextIntoSentences()
+    chunks = [
+        Chunk(
+            text="First sentence.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="A header",
+            chunk_type=BlockType.PAGE_HEADER,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="Second sentence. Third sentence.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    assert len(result) == 4
+    assert result[0].text == "First sentence."
+    assert result[1].chunk_type == BlockType.PAGE_HEADER
+    assert result[2].text == "Second sentence."
+    assert result[3].text == "Third sentence."
+
+
+def test_split_text_into_sentences_merge_metadata():
+    """Test that sentences spanning chunks have their metadata properly merged."""
+    processor = SplitTextIntoSentences()
+    chunks = [
+        Chunk(
+            text="This is the start of",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=[[(0, 0), (10, 10), (20, 20), (30, 30)]],
+            pages=[1],
+            id="1",
+        ),
+        Chunk(
+            text="a sentence that spans chunks.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=[[(40, 40), (50, 50), (60, 60), (70, 70)]],
+            pages=[2],
+            id="2",
+        ),
+        Chunk(
+            text="A complete sentence.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=[[(80, 80), (90, 90), (100, 100), (110, 110)]],
+            pages=[3],
+            id="3",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    assert len(result) == 2
+
+    assert result[0].text == "This is the start of a sentence that spans chunks."
+    assert result[0].bounding_boxes == [
+        [(0, 0), (10, 10), (20, 20), (30, 30)],
+        [(40, 40), (50, 50), (60, 60), (70, 70)],
+    ]
+    assert result[0].pages == [1, 2]
+
+    assert result[1].text == "A complete sentence."
+    assert result[1].bounding_boxes == [[(80, 80), (90, 90), (100, 100), (110, 110)]]
+    assert result[1].pages == [3]
