@@ -392,6 +392,7 @@ class SplitTextIntoSentences(PipelineComponent):
                 for s in self.complete_sentence_pattern.findall(text)
                 if s.strip()
             ]
+            complete_sentences = [s.replace("\n", " ") for s in complete_sentences]
 
             # Get the remaining text after removing complete sentences
             remaining_text = text
