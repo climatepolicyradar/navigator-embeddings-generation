@@ -28,7 +28,7 @@ def run_on_document(document_path: Path):
             chunk_processors.SplitTextIntoSentences(),
             chunkers.FixedLengthChunker(max_chunk_words=150),
             chunk_processors.AddHeadings(),
-            serializers.BasicSerializer(),
+            serializers.VerboseHeadingAwareSerializer(),
         ]
     )
 
