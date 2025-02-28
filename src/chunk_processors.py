@@ -303,6 +303,8 @@ class CombineTextChunksIntoList(PipelineComponent):
 
     If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
     should go before that.
+
+    TODO: this will join multiple consecutive lists with introductions ending in colons.
     """
 
     def __init__(self, text_separator: str = "\n") -> None:
@@ -337,13 +339,10 @@ class CombineTextChunksIntoList(PipelineComponent):
                 if potential_list_intro:
                     # Create a new list chunk incorporating the introduction
                     if not current_list_chunk:
-                        current_list_chunk = potential_list_intro.model_copy()
-                        current_list_chunk.chunk_type = BlockType.LIST
-                        current_list_chunk = current_list_chunk.merge(
-                            [chunk], text_separator=self.text_separator
-                        )
+                        current_list_chunk = potential_list_intro.model_copy(
+                            update={"chunk_type": BlockType.LIST}
+                        ).merge([chunk], text_separator=self.text_separator)
                     else:
-                        # Should rarely happen, but handle just in case
                         current_list_chunk = current_list_chunk.merge(
                             [potential_list_intro, chunk],
                             text_separator=self.text_separator,
@@ -356,11 +355,12 @@ class CombineTextChunksIntoList(PipelineComponent):
                     )
                 else:
                     # Create new list chunk
-                    current_list_chunk = chunk.model_copy()
-                    current_list_chunk.chunk_type = BlockType.LIST
+                    current_list_chunk = chunk.model_copy(
+                        update={"chunk_type": BlockType.LIST}
+                    )
                 potential_list_continuation = True
-            # Check if this might be a continuation of a list item
-            # (no list markers but follows a list chunk and doesn't start with capital letter or is incomplete sentence)
+            # Check if this might be a continuation of a list item (doesn't look like
+            # a complete sentence)
             elif (
                 potential_list_continuation
                 and current_list_chunk
@@ -373,20 +373,17 @@ class CombineTextChunksIntoList(PipelineComponent):
                     or not chunk.text.strip().endswith((".", "!", "?"))
                 )
             ):
-                # Treat as continuation of previous list item
                 current_list_chunk = current_list_chunk.merge(
                     [chunk], text_separator=" "
                 )
             # Check if this chunk ends with a colon - potential list introduction
             elif chunk.text.strip().endswith(":"):
-                # Store as potential introduction to a list
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
                 potential_list_intro = chunk
                 potential_list_continuation = False
             else:
-                # Not a list item, add previous list chunk if exists
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
@@ -396,7 +393,6 @@ class CombineTextChunksIntoList(PipelineComponent):
                 potential_list_continuation = False
                 new_chunks.append(chunk)
 
-        # Add final chunks if they exist
         if current_list_chunk:
             new_chunks.append(current_list_chunk)
         elif potential_list_intro:
