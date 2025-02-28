@@ -295,7 +295,15 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
 
 class CombineTextChunksIntoList(PipelineComponent):
-    """Combines consecutive text chunks that match a list regex pattern into list chunks."""
+    """
+    Combines consecutive text chunks that match a list item pattern into list chunks.
+
+    Also incorporates preceding chunks that end with a colon as part of the list,
+    since these often introduce the list.
+
+    If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
+    should go before that.
+    """
 
     def __init__(self, text_separator: str = "\n") -> None:
         self.text_separator = text_separator
@@ -308,6 +316,7 @@ class CombineTextChunksIntoList(PipelineComponent):
         new_chunks: list[Chunk] = []
         current_list_chunk = None
         potential_list_continuation = False
+        potential_list_intro = None
 
         for chunk in chunks:
             # Skip if not a text chunk
@@ -315,13 +324,32 @@ class CombineTextChunksIntoList(PipelineComponent):
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
+                if potential_list_intro:
+                    new_chunks.append(potential_list_intro)
+                    potential_list_intro = None
                 potential_list_continuation = False
                 new_chunks.append(chunk)
                 continue
 
             # If there is any list item within the chunk, treat it all as a list
             if re.findall(self.list_item_pattern, chunk.text):
-                if current_list_chunk:
+                # First check if we have a potential list introduction
+                if potential_list_intro:
+                    # Create a new list chunk incorporating the introduction
+                    if not current_list_chunk:
+                        current_list_chunk = potential_list_intro.model_copy()
+                        current_list_chunk.chunk_type = BlockType.LIST
+                        current_list_chunk = current_list_chunk.merge(
+                            [chunk], text_separator=self.text_separator
+                        )
+                    else:
+                        # Should rarely happen, but handle just in case
+                        current_list_chunk = current_list_chunk.merge(
+                            [potential_list_intro, chunk],
+                            text_separator=self.text_separator,
+                        )
+                    potential_list_intro = None
+                elif current_list_chunk:
                     # Merge with existing list chunk
                     current_list_chunk = current_list_chunk.merge(
                         [chunk], text_separator=self.text_separator
@@ -337,7 +365,11 @@ class CombineTextChunksIntoList(PipelineComponent):
                 potential_list_continuation
                 and current_list_chunk
                 and (
-                    (chunk.text[0].islower() if chunk.text else False)
+                    (
+                        chunk.text[0].islower()
+                        if chunk.text and chunk.text.strip()
+                        else False
+                    )
                     or not chunk.text.strip().endswith((".", "!", "?"))
                 )
             ):
@@ -345,17 +377,30 @@ class CombineTextChunksIntoList(PipelineComponent):
                 current_list_chunk = current_list_chunk.merge(
                     [chunk], text_separator=" "
                 )
+            # Check if this chunk ends with a colon - potential list introduction
+            elif chunk.text.strip().endswith(":"):
+                # Store as potential introduction to a list
+                if current_list_chunk:
+                    new_chunks.append(current_list_chunk)
+                    current_list_chunk = None
+                potential_list_intro = chunk
+                potential_list_continuation = False
             else:
                 # Not a list item, add previous list chunk if exists
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
+                if potential_list_intro:
+                    new_chunks.append(potential_list_intro)
+                    potential_list_intro = None
                 potential_list_continuation = False
                 new_chunks.append(chunk)
 
-        # Add final list chunk if exists
+        # Add final chunks if they exist
         if current_list_chunk:
             new_chunks.append(current_list_chunk)
+        elif potential_list_intro:
+            new_chunks.append(potential_list_intro)
 
         return new_chunks
 
