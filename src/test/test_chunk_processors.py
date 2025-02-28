@@ -481,6 +481,82 @@ def test_combine_text_chunks_into_list():
     assert result[3].chunk_type == BlockType.LIST
 
 
+def test_combine_text_chunks_into_list_across_chunks():
+    """Test that list patterns are detected and combined across multiple chunks."""
+    processor = CombineTextChunksIntoList()
+    chunks = [
+        Chunk(
+            text="Here are the main points:",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="1",
+        ),
+        Chunk(
+            text="• First important point",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="2",
+        ),
+        Chunk(
+            text="that continues in another chunk",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="3",
+        ),
+        Chunk(
+            text="• Second point",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="4",
+        ),
+        Chunk(
+            text="Some unrelated text.",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="5",
+        ),
+        Chunk(
+            text="Additional items to consider:",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="6",
+        ),
+        Chunk(
+            text="1. First numbered item",
+            chunk_type=BlockType.TEXT,
+            bounding_boxes=None,
+            pages=None,
+            id="7",
+        ),
+    ]
+
+    result = processor(chunks)
+
+    # 4. Second list's numbered item
+    assert len(result) == 3
+
+    # First chunk should be the combined list with introduction
+    assert result[0].chunk_type == BlockType.LIST
+    assert (
+        result[0].text
+        == "Here are the main points:\n• First important point that continues in another chunk\n• Second point"
+    )
+
+    # Second chunk should be the unrelated text
+    assert result[1].chunk_type == BlockType.TEXT
+    assert result[1].text == "Some unrelated text."
+
+    # Third chunk should be the second list introduction with the numbered item
+    assert result[2].chunk_type == BlockType.LIST
+    assert result[2].text == "Additional items to consider:\n1. First numbered item"
+
+
 def test_split_text_into_sentences_basic():
     """Test splitting text chunks into sentences."""
     processor = SplitTextIntoSentences()
