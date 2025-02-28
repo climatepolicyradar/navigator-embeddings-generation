@@ -295,25 +295,19 @@ class CombineSuccessiveSameTypeChunks(PipelineComponent):
 
 
 class CombineTextChunksIntoList(PipelineComponent):
-    """
-    Combines consecutive text chunks that match a list item pattern into list chunks.
-
-    If used in a pipeline with `CombineSuccessiveSameTypeChunks` on type TEXT, this
-    should go before that.
-
-    TODO: handle cases where a list item is split across multiple text blocks
-    """
+    """Combines consecutive text chunks that match a list regex pattern into list chunks."""
 
     def __init__(self, text_separator: str = "\n") -> None:
         self.text_separator = text_separator
         self.list_item_pattern = (
-            r"(^|\n)(?:•|-|(?:[\(|\[]?[0-9a-zA-Z]{0,3}[\.|\)|\]])).*?"
+            r"(^|\n)(?:•|-|·|(?:[\(|\[]?[0-9a-zA-Z]{0,3}[\.|\)|\]])).*?"
         )
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
         """Run list item combining."""
         new_chunks: list[Chunk] = []
         current_list_chunk = None
+        potential_list_continuation = False
 
         for chunk in chunks:
             # Skip if not a text chunk
@@ -321,11 +315,12 @@ class CombineTextChunksIntoList(PipelineComponent):
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
+                potential_list_continuation = False
                 new_chunks.append(chunk)
                 continue
 
             # If there is any list item within the chunk, treat it all as a list
-            elif re.findall(self.list_item_pattern, chunk.text):
+            if re.findall(self.list_item_pattern, chunk.text):
                 if current_list_chunk:
                     # Merge with existing list chunk
                     current_list_chunk = current_list_chunk.merge(
@@ -335,11 +330,27 @@ class CombineTextChunksIntoList(PipelineComponent):
                     # Create new list chunk
                     current_list_chunk = chunk.model_copy()
                     current_list_chunk.chunk_type = BlockType.LIST
+                potential_list_continuation = True
+            # Check if this might be a continuation of a list item
+            # (no list markers but follows a list chunk and doesn't start with capital letter or is incomplete sentence)
+            elif (
+                potential_list_continuation
+                and current_list_chunk
+                and (
+                    (chunk.text[0].islower() if chunk.text else False)
+                    or not chunk.text.strip().endswith((".", "!", "?"))
+                )
+            ):
+                # Treat as continuation of previous list item
+                current_list_chunk = current_list_chunk.merge(
+                    [chunk], text_separator=" "
+                )
             else:
                 # Not a list item, add previous list chunk if exists
                 if current_list_chunk:
                     new_chunks.append(current_list_chunk)
                     current_list_chunk = None
+                potential_list_continuation = False
                 new_chunks.append(chunk)
 
         # Add final list chunk if exists
