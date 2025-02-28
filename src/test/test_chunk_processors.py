@@ -615,3 +615,61 @@ def test_split_text_into_sentences_merge_metadata():
     assert result[1].text == "A complete sentence."
     assert result[1].bounding_boxes == [[(80, 80), (90, 90), (100, 100), (110, 110)]]
     assert result[1].pages == [3]
+
+
+@pytest.mark.parametrize(
+    "input_chunks,expected_text",
+    [
+        (
+            [
+                Chunk(
+                    text="This is not only an environmental imperative, but an economic one too, as countries around the world start to shift toward low-emissions policies, affecting global trade as well as demand for goods and resources.",
+                    chunk_type=BlockType.TEXT,
+                    bounding_boxes=None,
+                    pages=None,
+                    id="1",
+                ),
+                Chunk(
+                    text=", extreme weather, disasters) as well as long- term climatic shifts that impact water security, food security, and human health (DFFE 2019), with a particular focus on vulnerable groups, particularly rural communities, the poor, women, the youth, and children.",
+                    chunk_type=BlockType.TEXT,
+                    bounding_boxes=None,
+                    pages=None,
+                    id="2",
+                ),
+            ],
+            "This is not only an environmental imperative, but an economic one too, as countries around the world start to shift toward low-emissions policies, affecting global trade as well as demand for goods and resources, extreme weather, disasters) as well as long- term climatic shifts that impact water security, food security, and human health (DFFE 2019), with a particular focus on vulnerable groups, particularly rural communities, the poor, women, the youth, and children.",
+        ),
+        (
+            [
+                Chunk(
+                    text="The health impacts from the burning of fossil fuels (a major driver of climate change) also impacts poorer communities, further highlighting these inequities (Gray 2019; Madonsela et al.",
+                    chunk_type=BlockType.TEXT,
+                    bounding_boxes=None,
+                    pages=None,
+                    id="3",
+                ),
+                Chunk(
+                    text="2022).",
+                    chunk_type=BlockType.TEXT,
+                    bounding_boxes=None,
+                    pages=None,
+                    id="4",
+                ),
+            ],
+            "The health impacts from the burning of fossil fuels (a major driver of climate change) also impacts poorer communities, further highlighting these inequities (Gray 2019; Madonsela et al. 2022).",
+        ),
+    ],
+)
+def test_split_text_into_sentences_complex_cases(input_chunks, expected_text):
+    """Test sentence splitting with complex cases involving citations and split sentences."""
+    if expected_text.startswith("This is not only an environmental imperative"):
+        pytest.skip(
+            reason="Sentence splitting doesn't yet handle OCR errors which introduce extra punctuation between chunks."
+        )
+
+    processor = SplitTextIntoSentences()
+    result = processor(input_chunks)
+
+    assert len(result) == 1
+    assert result[0].text == expected_text
+    assert result[0].chunk_type == BlockType.TEXT
