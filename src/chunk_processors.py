@@ -357,6 +357,30 @@ class SplitTextIntoSentences(PipelineComponent):
     """
 
     def __init__(self) -> None:
+        # Common abbreviations that shouldn't cause sentence splits
+        self.common_abbreviations = [
+            r"et al\.",
+            r"etc\.",
+            r"i\.e\.",
+            r"e\.g\.",
+            r"vs\.",
+            r"Mr\.",
+            r"Mrs\.",
+            r"Dr\.",
+            r"Prof\.",
+            r"Inc\.",
+            r"Ltd\.",
+            r"Co\.",
+            r"Jr\.",
+            r"Sr\.",
+            r"St\.",
+            r"Ave\.",
+            r"Blvd\.",
+            r"Rd\.",
+            r"Ph\.D\.",
+            r"M\.D\.",
+        ]
+
         # First pattern matches only complete sentences
         self.complete_sentence_pattern = re.compile(
             r"[^.!?…]+[.!?…]+(?=\s|\Z)", re.MULTILINE
@@ -378,7 +402,6 @@ class SplitTextIntoSentences(PipelineComponent):
                 new_chunks.append(chunk)
                 continue
 
-            # If we have an incomplete sentence from previous chunk, merge it with current
             if incomplete_chunk:
                 text = f"{incomplete_chunk.text} {chunk.text}".strip()
                 current_chunk = incomplete_chunk.merge([chunk], text_separator=" ")
@@ -387,12 +410,8 @@ class SplitTextIntoSentences(PipelineComponent):
                 text = chunk.text
                 current_chunk = chunk
 
-            complete_sentences = [
-                s.strip()
-                for s in self.complete_sentence_pattern.findall(text)
-                if s.strip()
-            ]
-            complete_sentences = [s.replace("\n", " ") for s in complete_sentences]
+            # Process text for complete sentences
+            complete_sentences = self._extract_complete_sentences(text)
 
             # Get the remaining text after removing complete sentences
             remaining_text = text
@@ -421,3 +440,49 @@ class SplitTextIntoSentences(PipelineComponent):
             new_chunks.append(incomplete_chunk)
 
         return new_chunks
+
+    def _extract_complete_sentences(self, text: str) -> list[str]:
+        """
+        Extract complete sentences from text.
+
+        Handles abbreviations which end in full stops at the end of sentences, by
+        temporarily replacing them with placeholders whilst sentence boundaries are
+        being identified.
+        """
+
+        placeholder_map = {}
+        modified_text = text
+
+        for i, abbr in enumerate(self.common_abbreviations):
+            placeholder = f"__ABBR_{i}__"
+
+            # Create pattern that matches the abbreviation not followed by an uppercase letter
+            # (which would indicate a new sentence)
+            pattern = f"{abbr}(?![A-Z])"
+            matches = re.finditer(pattern, modified_text)
+            for match in reversed(
+                list(matches)
+            ):  # Process in reverse to maintain positions
+                span = match.span()
+                abbr_text = modified_text[span[0] : span[1]]
+                placeholder_map[placeholder] = abbr_text
+                modified_text = (
+                    modified_text[: span[0]] + placeholder + modified_text[span[1] :]
+                )
+
+        # Find sentences in the modified text
+        sentences = [
+            s.strip()
+            for s in self.complete_sentence_pattern.findall(modified_text)
+            if s.strip()
+        ]
+
+        # Replace placeholders back with original abbreviations
+        final_sentences = []
+        for sentence in sentences:
+            for placeholder, original in placeholder_map.items():
+                sentence = sentence.replace(placeholder, original)
+            sentence = sentence.replace("\n", " ")
+            final_sentences.append(sentence)
+
+        return final_sentences
