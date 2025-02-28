@@ -30,7 +30,7 @@ class FixedLengthChunker(PipelineComponent):
     ) -> None:
         self.max_chunk_words = max_chunk_words
         self.block_types_to_chunk = filter_and_warn_for_unknown_types(
-            self.block_types_to_chunk
+            block_types_to_chunk
         )
 
     def __call__(self, chunks: list[Chunk]) -> list[Chunk]:
