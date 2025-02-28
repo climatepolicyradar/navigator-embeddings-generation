@@ -11,32 +11,9 @@ import re
 from cpr_sdk.parser_models import BlockType
 
 from src.models import Chunk, PipelineComponent
+from src.utils import filter_and_warn_for_unknown_types
 
 logger = getLogger(__name__)
-
-
-def filter_and_warn_for_unknown_types(types: list[str]) -> list[str]:
-    """
-    Filter out unknown types from a list of types.
-
-    If the type is unknown, log a warning and remove it from the list.
-    """
-
-    types_to_remove: list[str] = []
-
-    for _type in set(types):
-        try:
-            BlockType(_type)
-        except NameError:
-            logger.warning(
-                f"Blocks to filter should be of a known block type, removing {_type} "
-                f"from the list. "
-            )
-            types_to_remove.append(_type)
-
-    types = [t for t in types if t not in types_to_remove]
-
-    return types
 
 
 class IdentityChunkProcessor(PipelineComponent):

@@ -3,7 +3,7 @@
 from typing import Sequence
 
 from src.models import Chunk, PipelineComponent
-from src.chunk_processors import filter_and_warn_for_unknown_types
+from src.utils import filter_and_warn_for_unknown_types
 
 
 class IdentityChunker(PipelineComponent):
