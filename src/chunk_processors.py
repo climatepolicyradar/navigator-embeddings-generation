@@ -312,7 +312,6 @@ class CombineTextChunksIntoList(PipelineComponent):
 
             # If there is any list item within the chunk, treat it all as a list
             if re.findall(self.list_item_pattern, chunk.text):
-                # First check if we have a potential list introduction
                 if potential_list_intro:
                     # Create a new list chunk incorporating the introduction
                     if not current_list_chunk:
@@ -320,10 +319,12 @@ class CombineTextChunksIntoList(PipelineComponent):
                             update={"chunk_type": BlockType.LIST}
                         ).merge([chunk], text_separator=self.text_separator)
                     else:
-                        current_list_chunk = current_list_chunk.merge(
-                            [potential_list_intro, chunk],
-                            text_separator=self.text_separator,
-                        )
+                        # If we already have a list in progress and find a new introduction,
+                        # finish the current list and start a new one
+                        new_chunks.append(current_list_chunk)
+                        current_list_chunk = potential_list_intro.model_copy(
+                            update={"chunk_type": BlockType.LIST}
+                        ).merge([chunk], text_separator=self.text_separator)
                     potential_list_intro = None
                 elif current_list_chunk:
                     # Merge with existing list chunk
