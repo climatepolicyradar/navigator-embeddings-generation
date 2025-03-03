@@ -411,12 +411,9 @@ class SplitTextIntoSentences(PipelineComponent):
             r"M\.D\.",
         ]
 
-        # First pattern matches only complete sentences
         self.complete_sentence_pattern = re.compile(
             r"[^.!?…]+[.!?…]+(?=\s|\Z)", re.MULTILINE
         )
-        # Second pattern matches any remaining text
-        self.remaining_text_pattern = re.compile(r"[^.!?…]+", re.MULTILINE)
 
     def __call__(self, chunks: Sequence[Chunk]) -> list[Chunk]:
         """Run sentence splitting."""
