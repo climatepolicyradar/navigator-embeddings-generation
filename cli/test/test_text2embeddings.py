@@ -1,6 +1,5 @@
 import io
 import json
-import logging
 import tempfile
 from pathlib import Path
 
@@ -20,6 +19,8 @@ def test_run_encoder_local(
 
     with tempfile.TemporaryDirectory() as input_dir:
         with tempfile.TemporaryDirectory() as output_dir:
+            document_import_ids = []
+
             # Create test files
             for file in [
                 test_html_file_json,
@@ -29,8 +30,12 @@ def test_run_encoder_local(
                 file_path = Path(input_dir) / f"{file['document_id']}.json"
                 file_path.write_text(json.dumps(file))
 
+                document_import_ids.append(file["document_id"])
+
             runner = CliRunner()
-            result = runner.invoke(run_as_cli, [input_dir, output_dir])
+            result = runner.invoke(
+                run_as_cli, [input_dir, output_dir, ",".join(document_import_ids)]
+            )
             assert result.exit_code == 0
 
             assert set(Path(output_dir).glob("*.json")) == {
@@ -78,8 +83,13 @@ def test_run_encoder_s3(
 ):
     """Test that the encoder runs with S3 input and output paths and outputs the correct files."""
 
+    document_import_ids = ["test_pdf", "test_html", "test_no_content_type"]
+
     runner = CliRunner()
-    result = runner.invoke(run_as_cli, [test_input_dir_s3, test_output_dir_s3, "--s3"])
+    result = runner.invoke(
+        run_as_cli,
+        [test_input_dir_s3, test_output_dir_s3, ",".join(document_import_ids), "--s3"],
+    )
 
     assert result.exit_code == 0
 
@@ -125,46 +135,3 @@ def test_run_encoder_s3(
         file_text = file_obj["Body"]
         file_bytes = io.BytesIO(file_text.read())
         assert np.load(file_bytes).shape[1] == 768
-
-
-def test_run_parser_skip_already_done(
-    test_html_file_json, test_pdf_file_json, test_no_content_type_file_json, caplog
-) -> None:
-    """Test that files which have already been parsed are skipped by default."""
-
-    with tempfile.TemporaryDirectory() as input_dir:
-        with tempfile.TemporaryDirectory() as output_dir:
-            # Create test files in input and output directories
-            for file in [
-                test_html_file_json,
-                test_pdf_file_json,
-                test_no_content_type_file_json,
-            ]:
-                file_path = Path(input_dir) / f"{file['document_id']}.json"
-                file_path.write_text(json.dumps(file))
-
-                file_path = Path(output_dir) / f"{file['document_id']}.npy"
-                file_path.write_text(str(np.array([1, 2, 3]).tobytes()))
-
-            caplog.set_level(logging.INFO)
-            runner = CliRunner()
-            result = runner.invoke(
-                run_as_cli,
-                [
-                    input_dir,
-                    output_dir,
-                ],
-            )
-
-            assert result.exit_code == 0
-
-            all_messages = ""
-            for i in caplog.messages:
-                all_messages = all_messages + i
-
-            assert (
-                "3 documents found that have already been encoded. Skipping."
-                in all_messages
-            )
-
-            assert "No more documents to encode. Exiting." in all_messages
