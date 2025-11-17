@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Sequence, Set, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
@@ -77,12 +77,6 @@ def filter_on_block_type(
         )
         for _input in inputs
     ]
-
-
-def get_ids_with_suffix(files: Sequence[str], suffix: str) -> Set[str]:
-    """Get a set of the ids of the files with the given suffix."""
-    files = [file for file in files if file.endswith(suffix)]
-    return set([os.path.splitext(os.path.basename(file))[0] for file in files])
 
 
 def encode_parser_output(
