@@ -26,4 +26,4 @@ COPY ./src ./src
 COPY ./cli ./cli
 
 # Run the indexer on the input s3 directory
-ENTRYPOINT [ "sh", "./cli/run.sh" ]
+ENTRYPOINT [ "python3", "-m", "cli.text2embeddings" ]
