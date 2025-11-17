@@ -24,6 +24,7 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy files to image
 COPY ./src ./src
 COPY ./cli ./cli
+COPY ./tests ./tests
 
 # Run the indexer on the input s3 directory
 ENTRYPOINT [ "python3", "-m", "cli.text2embeddings" ]
