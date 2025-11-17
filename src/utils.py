@@ -1,14 +1,13 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Sequence, Set, Tuple, Union
+from typing import List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
 
-from src import config
 from src.ml import SentenceEncoder
-from src.s3 import get_s3_keys_with_prefix, s3_object_read_text
+from src.s3 import s3_object_read_text
 
 logger = logging.getLogger(__name__)
 
@@ -120,58 +119,6 @@ def encode_parser_output(
         text_embeddings = None
 
     return description_embedding, text_embeddings
-
-
-def get_files_to_process(
-    s3: bool, input_dir: str, output_dir: str, redo: bool, limit: Union[None, int]
-) -> Sequence[str]:
-    """
-    Get the list of files to process.
-
-    Either from the config or from the input directory.
-    """
-    if s3:
-        document_paths_previously_parsed = get_s3_keys_with_prefix(output_dir)
-    else:
-        document_paths_previously_parsed = os.listdir(output_dir)
-
-    document_ids_previously_parsed = get_ids_with_suffix(
-        document_paths_previously_parsed, ".npy"
-    )
-
-    if config.FILES_TO_PROCESS is not None:
-        files_to_process_subset = config.FILES_TO_PROCESS.split("$")[1:]
-        files_to_process = [os.path.join(input_dir, f) for f in files_to_process_subset]
-    else:
-        if s3:
-            files_to_process = get_s3_keys_with_prefix(input_dir)
-        else:
-            files_to_process = os.listdir(input_dir)
-
-    files_to_process_ids = get_ids_with_suffix(files_to_process, ".json")
-    files_already_processed = document_ids_previously_parsed.intersection(
-        files_to_process_ids
-    )
-    if not redo and files_already_processed:
-        logger.warning(
-            f"{len(files_already_processed)} "
-            f"documents found that have already been encoded. Skipping. "
-        )
-
-    files_to_process_ids_sequence = [
-        id_ for id_ in files_to_process_ids if id_ not in document_ids_previously_parsed
-    ]
-    if not files_to_process_ids_sequence:
-        logger.warning("No more documents to encode. Exiting.")
-
-    if limit:
-        logger.info(
-            f"Limiting to {files_to_process_ids} documents as the --limit flag has "
-            f"been passed. "
-        )
-        return files_to_process_ids_sequence[:limit]
-
-    return files_to_process_ids_sequence
 
 
 def get_Text2EmbeddingsInput_array(

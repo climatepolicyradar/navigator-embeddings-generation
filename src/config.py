@@ -13,7 +13,6 @@ ENCODING_BATCH_SIZE: int = int(os.getenv("ENCODING_BATCH_SIZE", "32"))
 # comma-separated 2-letter ISO codes
 TARGET_LANGUAGES: Set[str] = set(os.getenv("TARGET_LANGUAGES", "en").lower().split(","))
 ENCODER_SUPPORTED_LANGUAGES: Set[str] = {"en"}
-FILES_TO_PROCESS = os.getenv("FILES_TO_PROCESS")
 BLOCKS_TO_FILTER = os.getenv("BLOCKS_TO_FILTER", "Table,Figure").split(",")
 # This matches the ID pattern enforced by the backend, maybe we should share this code?
 _ID_ELEMENT = r"[a-zA-Z0-9]+([-_]?[a-zA-Z0-9]+)*"

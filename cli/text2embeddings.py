@@ -4,11 +4,11 @@ import logging
 import logging.config
 import os
 from pathlib import Path
-from typing import Optional
 
 import click
 import numpy as np
 from tqdm.auto import tqdm
+from typing import NewType
 
 from src.languages import get_docs_of_supported_language
 from src.ml import SBERTEncoder
@@ -16,7 +16,6 @@ from src import config
 from src.utils import (
     filter_on_block_type,
     encode_parser_output,
-    get_files_to_process,
     get_Text2EmbeddingsInput_array,
 )
 from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3_as_npy
@@ -43,6 +42,21 @@ DEFAULT_LOGGING = {
 logger = logging.getLogger(__name__)
 logging.config.dictConfig(DEFAULT_LOGGING)
 
+# Example: CCLW.executive.1813.2418
+DocumentImportId = NewType("DocumentImportId", str)
+
+
+class CommaSeparatedList(click.ParamType):
+    """A Custom ParamType allowing comma separated lists to be pass to the cli."""
+
+    name = "comma_separated_list"
+
+    def convert(self, value, param, ctx):
+        """Convert the value passed in to the cli to the desired format."""
+        if value is None:
+            return None
+        return [item.strip() for item in value.split(",") if item.strip()]
+
 
 @click.command()
 @click.argument(
@@ -51,19 +65,12 @@ logging.config.dictConfig(DEFAULT_LOGGING)
 @click.argument(
     "output-dir",
 )
+@click.argument("document-import-ids", type=CommaSeparatedList())
 @click.option(
     "--s3",
     is_flag=True,
     required=False,
     help="Whether or not we are reading from and writing to S3.",
-)
-@click.option(
-    "--redo",
-    "-r",
-    help="Redo encoding for files that have already been parsed. By default, "
-    "files with IDs that already exist in the output directory are skipped.",
-    is_flag=True,
-    default=False,
 )
 @click.option(
     "--device",
@@ -72,19 +79,12 @@ logging.config.dictConfig(DEFAULT_LOGGING)
     required=True,
     default="cpu",
 )
-@click.option(
-    "--limit",
-    type=int,
-    default=None,
-    help="Optionally limit the number of text samples to process. Useful for debugging.",
-)
 def run_as_cli(
     input_dir: str,
     output_dir: str,
+    document_import_ids: list[DocumentImportId],
     s3: bool,
-    redo: bool,
     device: str,
-    limit: Optional[int],
 ):
     """
     Run CLI to produce embeddings from document parser JSON outputs.
@@ -95,31 +95,26 @@ def run_as_cli(
     run CPU unless device is set to 'cuda' or 'mps'.
 
     Args: input_dir: Directory containing JSON files output_dir: Directory to save
-    embeddings to s3: Whether we are reading from and writing to S3. redo: Redo
-    encoding for files that have already been parsed. By default, files with IDs that
-    already exist in the output directory are skipped. limit (Optional[int]):
-    Optionally limit the number of text samples to process. Useful for debugging.
-    device (str): Device to use for embeddings generation. Must be either "cuda", "mps",
-    or "cpu".
+    embeddings to s3: Whether we are reading from and writing to S3.
+    document_import_ids: A list of the document import ids to run on. device (str):
+    Device to use for embeddings generation. Must be either "cuda", "mps", or "cpu".
     """
 
     return run_embeddings_generation(
         input_dir=input_dir,
         output_dir=output_dir,
+        document_import_ids=document_import_ids,
         s3=s3,
-        redo=redo,
         device=device,
-        limit=limit,
     )
 
 
 def run_embeddings_generation(
     input_dir: str,
     output_dir: str,
+    document_import_ids: list[DocumentImportId],
     s3: bool,
-    redo: bool,
     device: str,
-    limit: Optional[int],
 ):
     """
     Run CLI to produce embeddings from document parser JSON outputs.
@@ -133,23 +128,15 @@ def run_embeddings_generation(
             "props": {
                 "input_dir": input_dir,
                 "output_dir": output_dir,
+                "document_import_ids": document_import_ids,
                 "s3": s3,
-                "redo": redo,
                 "device": device,
-                "limit": limit,
             }
         },
     )
 
-    logger.info("Identifying files to process.")
-    files_to_process_ids = get_files_to_process(s3, input_dir, output_dir, redo, limit)
-    logger.info(
-        f"Found {len(files_to_process_ids)} files to process.",
-        extra={"props": {"files_to_process_ids": files_to_process_ids}},
-    )
-
     logger.info("Constructing Text2EmbeddingsInput objects from parser output jsons.")
-    tasks = get_Text2EmbeddingsInput_array(input_dir, s3, files_to_process_ids)
+    tasks = get_Text2EmbeddingsInput_array(input_dir, s3, document_import_ids)
 
     logger.info(
         "Filtering tasks to those with supported languages.",
