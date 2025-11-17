@@ -3,6 +3,7 @@ from typing import Sequence
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, PDFTextBlock
 
+from cli.test.conftest import test_pdf_file_json  # noqa: F401
 from src import config
 from src.ml import SBERTEncoder
 from src.utils import (

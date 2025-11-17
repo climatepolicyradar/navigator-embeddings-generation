@@ -83,7 +83,11 @@ def test_run_encoder_s3(
 ):
     """Test that the encoder runs with S3 input and output paths and outputs the correct files."""
 
-    document_import_ids = ["test_pdf", "test_html", "test_no_content_type"]
+    document_import_ids = [
+        "CCLWTEST.executive.1000.1000",
+        "CCLWTEST.executive.1001.1001",
+        "CCLWTEST.executive.1002.1002",
+    ]
 
     runner = CliRunner()
     result = runner.invoke(
