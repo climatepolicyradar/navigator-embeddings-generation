@@ -5,7 +5,6 @@ import numpy as np
 from src.s3 import (
     validate_s3_pattern,
     check_file_exists_in_s3,
-    get_s3_keys_with_prefix,
     s3_object_read_text,
     write_json_to_s3,
     save_ndarray_to_s3_as_npy,
@@ -31,20 +30,6 @@ def test_check_file_exists_in_s3(pipeline_s3_client, test_file_key):
 
     assert check_file_exists_in_s3(f"s3://{test_file_key}")
     assert not check_file_exists_in_s3("s3://random_bucket/prefix/file.json")
-
-
-def test_get_s3_keys_with_prefix(
-    pipeline_s3_client, s3_bucket_and_region, test_prefix, test_file_key
-):
-    """Test that we can get a list of keys with a given prefix."""
-    assert get_s3_keys_with_prefix(
-        f"s3://{s3_bucket_and_region['bucket']}/{test_prefix}/"
-    ) == [f"{test_prefix}/test_id.json"]
-
-    try:
-        get_s3_keys_with_prefix("random_string")
-    except Exception as e:
-        assert "Prefix does not represent an s3 path: random_string" in str(e)
 
 
 def test_s3_object_read_text(pipeline_s3_client, test_file_key, test_file_json):

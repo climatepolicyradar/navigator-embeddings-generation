@@ -3,14 +3,13 @@ from typing import Sequence
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, PDFTextBlock
 
-from cli.test.conftest import test_pdf_file_json  # noqa: F401
+from tests.cli.conftest import test_pdf_file_json  # noqa: F401
 from src import config
 from src.ml import SBERTEncoder
 from src.utils import (
     encode_parser_output,
     filter_blocks,
     filter_on_block_type,
-    get_ids_with_suffix,
     replace_text_blocks,
 )
 
@@ -95,22 +94,6 @@ def test_filter_blocks(test_pdf_file_json):  # noqa: F811
     assert len(filtered_text_blocks) > 0
 
 
-def test_get_ids_with_suffix():
-    """Tests that get_ids_with_suffix function returns the correct filtered ids."""
-    filtered_ids = get_ids_with_suffix(
-        files=[
-            "s3://bucket/prefix/test_id_1.json",
-            "s3://bucket/prefix/test_id_2.xlsx",
-            "s3://bucket/prefix/test_id_3.npy",
-            "s3://bucket/prefix/test_id_4.json",
-        ],
-        suffix=".json",
-    )
-
-    assert len(filtered_ids) == 2
-    assert set(filtered_ids) == {"test_id_1", "test_id_4"}
-
-
 def test_encode_indexer_input(test_pdf_file_json):  # noqa: F811
     """Tests that the encode_indexer_input function returns the correct embeddings."""
     encoder_obj = SBERTEncoder(config.SBERT_MODEL)
@@ -149,9 +132,6 @@ def test_encode_indexer_input(test_pdf_file_json):  # noqa: F811
     assert isinstance(description_embeddings, np.ndarray)
     assert isinstance(text_embeddings, np.ndarray)
 
-
-# TODO get_files_to_process
-#   TODO local files, s3 files, environment variable files
 
 # TODO get_Text2EmbeddingsInput_array
 #   TODO needs s3 files, local files, of the form json IndexerInput objects

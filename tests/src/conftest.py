@@ -10,7 +10,7 @@ from cpr_sdk.pipeline_general_models import BackendDocument
 from moto import mock_aws
 from pydantic import AnyHttpUrl
 
-from cli.test.conftest import get_html_text_block
+from tests.cli.conftest import get_html_text_block
 
 
 class S3Client:
