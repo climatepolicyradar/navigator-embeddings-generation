@@ -6,6 +6,7 @@ import logging.config
 import os
 from pathlib import Path
 from typing import NewType, Optional
+from uuid import uuid4
 
 import click
 import numpy as np
@@ -102,17 +103,20 @@ def process_task(
 
 
 def write_results_file(
-    results: list[EmbeddingResult], output_dir: str, s3: bool
+    results: list[EmbeddingResult], input_dir_path: str, s3: bool
 ) -> None:
     """
     Write results to a JSON file.
 
     Args:
-        results: List of embedding results
-        output_dir: Directory to write results file to
-        s3: Whether to write to S3
+        results: List of embedding results.
+        input_dir_path: Directory to write results file to that is specific to the run.
+        s3: Whether to write to S3.
     """
-    results_path = os.path.join(output_dir, "embeddings_results.json")
+    results_path = os.path.join(
+        input_dir_path, "reports", "embeddings", uuid4().hex + ".json"
+    )
+
     results_json = json.dumps(
         [result.model_dump() for result in results],
         indent=2,
@@ -137,12 +141,9 @@ class CommaSeparatedList(click.ParamType):
 
 
 @click.command()
-@click.argument(
-    "input-dir",
-)
-@click.argument(
-    "output-dir",
-)
+@click.argument("input-dir-path")
+@click.argument("embeddings-input-dir")
+@click.argument("embeddings-output-dir")
 @click.argument("document-import-ids", type=CommaSeparatedList())
 @click.option(
     "--s3",
@@ -158,8 +159,9 @@ class CommaSeparatedList(click.ParamType):
     default="cpu",
 )
 def run_as_cli(
-    input_dir: str,
-    output_dir: str,
+    input_dir_path: str,
+    embeddings_input_dir_path: str,
+    embeddings_output_dir_path: str,
     document_import_ids: list[DocumentImportId],
     s3: bool,
     device: str,
@@ -172,15 +174,21 @@ def run_as_cli(
     embeddings of each of the text blocks in the document in order. Encoding will
     run CPU unless device is set to 'cuda' or 'mps'.
 
-    Args: input_dir: Directory containing JSON files output_dir: Directory to save
-    embeddings to s3: Whether we are reading from and writing to S3.
-    document_import_ids: A list of the document import ids to run on. device (str):
-    Device to use for embeddings generation. Must be either "cuda", "mps", or "cpu".
+    Args:
+        input_dir_path: Directory containing the input directory for the run.
+        embeddings_input_dir_path: Directory containing JSON files to process for embeddings
+            generation.
+        embeddings_output_dir_path: Directory to save embeddings to.
+        document_import_ids: A list of the document import ids to run on.
+        s3: Whether we are reading from and writing to S3.
+        device: Device to use for embeddings generation.
+            Must be either "cuda", "mps", or "cpu".
     """
 
     return run_embeddings_generation(
-        input_dir=input_dir,
-        output_dir=output_dir,
+        input_dir_path=input_dir_path,
+        embeddings_input_dir_path=embeddings_input_dir_path,
+        embeddings_output_dir_path=embeddings_output_dir_path,
         document_import_ids=document_import_ids,
         s3=s3,
         device=device,
@@ -188,8 +196,9 @@ def run_as_cli(
 
 
 def run_embeddings_generation(
-    input_dir: str,
-    output_dir: str,
+    input_dir_path: str,
+    embeddings_input_dir_path: str,
+    embeddings_output_dir_path: str,
     document_import_ids: list[DocumentImportId],
     s3: bool,
     device: str,
@@ -204,8 +213,9 @@ def run_embeddings_generation(
         "Running embeddings generation...",
         extra={
             "props": {
-                "input_dir": input_dir,
-                "output_dir": output_dir,
+                "input_dir_path": input_dir_path,
+                "embeddings_input_dir_path": embeddings_input_dir_path,
+                "embeddings_output_dir_path": embeddings_output_dir_path,
                 "document_import_ids": document_import_ids,
                 "s3": s3,
                 "device": device,
@@ -214,7 +224,9 @@ def run_embeddings_generation(
     )
 
     logger.info("Constructing Text2EmbeddingsInput objects from parser output jsons.")
-    tasks = get_Text2EmbeddingsInput_array(input_dir, s3, document_import_ids)
+    tasks = get_Text2EmbeddingsInput_array(
+        embeddings_input_dir_path, s3, document_import_ids
+    )
 
     logger.info(
         "Filtering tasks to those with supported languages.",
@@ -264,7 +276,7 @@ def run_embeddings_generation(
         result = EmbeddingResult(document_id=task.document_id)
 
         try:
-            process_task(task, encoder, output_dir, s3, device)
+            process_task(task, encoder, embeddings_output_dir_path, s3, device)
         except Exception as e:
             msg = f"Processing document {task.document_id} failed: {e}"
             logger.exception(msg, extra={"props": {"document_id": task.document_id}})
@@ -275,7 +287,7 @@ def run_embeddings_generation(
     logger.info("Done processing documents.")
 
     # Write out results
-    write_results_file(results, output_dir, s3)
+    write_results_file(results, input_dir_path, s3)
 
 
 if __name__ == "__main__":
