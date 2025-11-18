@@ -17,47 +17,58 @@ def test_run_encoder_local(
 ):
     """Test that the encoder runs with local input and output paths and outputs the correct files."""
 
-    with tempfile.TemporaryDirectory() as input_dir:
-        with tempfile.TemporaryDirectory() as output_dir:
-            document_import_ids = []
+    with tempfile.TemporaryDirectory() as embeddings_input_dir_path:
+        with tempfile.TemporaryDirectory() as embeddings_output_dir_path:
+            with tempfile.TemporaryDirectory() as input_dir_path:
+                document_import_ids = []
 
-            # Create test files
-            for file in [
-                test_html_file_json,
-                test_pdf_file_json,
-                test_no_content_type_file_json,
-            ]:
-                file_path = Path(input_dir) / f"{file['document_id']}.json"
-                file_path.write_text(json.dumps(file))
+                # Create test files
+                for file in [
+                    test_html_file_json,
+                    test_pdf_file_json,
+                    test_no_content_type_file_json,
+                ]:
+                    file_path = (
+                        Path(embeddings_input_dir_path) / f"{file['document_id']}.json"
+                    )
+                    file_path.write_text(json.dumps(file))
 
-                document_import_ids.append(file["document_id"])
+                    document_import_ids.append(file["document_id"])
 
-            runner = CliRunner()
-            result = runner.invoke(
-                run_as_cli, [input_dir, output_dir, ",".join(document_import_ids)]
-            )
-            assert result.exit_code == 0
+                runner = CliRunner()
+                result = runner.invoke(
+                    run_as_cli,
+                    [
+                        input_dir_path,
+                        embeddings_input_dir_path,
+                        embeddings_output_dir_path,
+                        ",".join(document_import_ids),
+                    ],
+                )
+                assert result.exit_code == 0
 
-            assert set(Path(output_dir).glob("*.json")) == {
-                Path(output_dir) / "test_html.json",
-                Path(output_dir) / "test_pdf.json",
-                Path(output_dir) / "test_no_content_type.json",
-            }
-            assert set(Path(output_dir).glob("*.npy")) == {
-                Path(output_dir) / "test_html.npy",
-                Path(output_dir) / "test_pdf.npy",
-                Path(output_dir) / "test_no_content_type.npy",
-            }
+                assert set(Path(embeddings_output_dir_path).glob("*.json")) == {
+                    Path(embeddings_output_dir_path) / "test_html.json",
+                    Path(embeddings_output_dir_path) / "test_pdf.json",
+                    Path(embeddings_output_dir_path) / "test_no_content_type.json",
+                }
+                assert set(Path(embeddings_output_dir_path).glob("*.npy")) == {
+                    Path(embeddings_output_dir_path) / "test_html.npy",
+                    Path(embeddings_output_dir_path) / "test_pdf.npy",
+                    Path(embeddings_output_dir_path) / "test_no_content_type.npy",
+                }
 
-            for path in Path(output_dir).glob("*.json"):
-                assert ParserOutput.model_validate(json.loads(path.read_text()))
+                for path in Path(embeddings_output_dir_path).glob("*.json"):
+                    assert ParserOutput.model_validate(json.loads(path.read_text()))
 
-            for path in Path(output_dir).glob("*.npy"):
-                assert np.load(str(path)).shape[1] == 768
+                for path in Path(embeddings_output_dir_path).glob("*.npy"):
+                    assert np.load(str(path)).shape[1] == 768
 
-            # test_html has the `has_valid_text` flag set to false, so the numpy file
-            # should only contain a description embedding
-            assert np.load(str(Path(output_dir) / "test_html.npy")).shape == (1, 768)
+                # test_html has the `has_valid_text` flag set to false, so the numpy file
+                # should only contain a description embedding
+                assert np.load(
+                    str(Path(embeddings_output_dir_path) / "test_html.npy")
+                ).shape == (1, 768)
 
 
 def test_s3_client(
@@ -89,10 +100,20 @@ def test_run_encoder_s3(
         "CCLWTEST.executive.1002.1002",
     ]
 
+    input_dir_path: str = (
+        f's3://{s3_bucket_and_region["bucket"]}/input/2023-04-13T09.17.37.953810/'
+    )
+
     runner = CliRunner()
     result = runner.invoke(
         run_as_cli,
-        [test_input_dir_s3, test_output_dir_s3, ",".join(document_import_ids), "--s3"],
+        [
+            input_dir_path,
+            test_input_dir_s3,
+            test_output_dir_s3,
+            ",".join(document_import_ids),
+            "--s3",
+        ],
     )
 
     assert result.exit_code == 0

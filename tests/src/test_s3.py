@@ -3,10 +3,10 @@ import json
 import numpy as np
 
 from src.s3 import (
-    validate_s3_pattern,
     s3_object_read_text,
-    write_json_to_s3,
     save_ndarray_to_s3_as_npy,
+    validate_s3_pattern,
+    write_json_to_s3,
 )
 
 
@@ -51,7 +51,7 @@ def test_save_ndarray_to_s3_as_npy(pipeline_s3_client, s3_bucket_and_region):
         np.array([1, 2, 3]), f"s3://{s3_bucket_and_region['bucket']}/prefix/test.npy"
     )
 
-    response = pipeline_s3_client.list_objects_v2(
+    response = pipeline_s3_client.client.list_objects_v2(
         Bucket=s3_bucket_and_region["bucket"], Prefix="prefix/test.npy"
     )
     contents = response.get("Contents", [])

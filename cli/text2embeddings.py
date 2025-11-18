@@ -125,6 +125,7 @@ def write_results_file(
     if s3:
         write_json_to_s3(results_json, results_path)
     else:
+        Path(results_path).parent.mkdir(parents=True, exist_ok=True)
         Path(results_path).write_text(results_json)
 
 
@@ -142,8 +143,8 @@ class CommaSeparatedList(click.ParamType):
 
 @click.command()
 @click.argument("input-dir-path")
-@click.argument("embeddings-input-dir")
-@click.argument("embeddings-output-dir")
+@click.argument("embeddings-input-dir-path")
+@click.argument("embeddings-output-dir-path")
 @click.argument("document-import-ids", type=CommaSeparatedList())
 @click.option(
     "--s3",
