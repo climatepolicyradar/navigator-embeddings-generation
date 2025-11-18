@@ -4,7 +4,6 @@ from typing import Any
 import boto3
 import numpy as np
 from aws_error_utils.aws_error_utils import errors
-from botocore.exceptions import ClientError
 
 from src.config import S3_PATTERN
 
@@ -18,24 +17,6 @@ def validate_s3_pattern(s3_path: str):
     key = s3_match.group("prefix")
     s3client = boto3.client("s3")
     return bucket, key, s3client
-
-
-# TODO do we want to instantiate one client object and pass that through rather than
-#  instantiating each time?
-def check_file_exists_in_s3(s3_path: str) -> bool:
-    """Checks whether a file exists in an S3 bucket."""
-    bucket, key, s3client = validate_s3_pattern(s3_path)
-    try:
-        s3client.head_object(Bucket=bucket, Key=key)
-        return True
-    except ClientError:
-        return False
-    except errors.NoSuchBucket:
-        return False
-    except errors.NoSuchKey:
-        return False
-    except Exception as e:
-        raise e
 
 
 def s3_object_read_text(s3_path: str) -> str:

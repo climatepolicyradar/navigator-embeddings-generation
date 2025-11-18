@@ -4,7 +4,6 @@ import numpy as np
 
 from src.s3 import (
     validate_s3_pattern,
-    check_file_exists_in_s3,
     s3_object_read_text,
     write_json_to_s3,
     save_ndarray_to_s3_as_npy,
@@ -23,13 +22,6 @@ def test_validate_s3_pattern(test_file_key):
         validate_s3_pattern("random_string")
     except Exception as e:
         assert "Key does not represent an s3 path: random_string" in str(e)
-
-
-def test_check_file_exists_in_s3(pipeline_s3_client, test_file_key):
-    """Test whether we can check whether a file exists in s3."""
-
-    assert check_file_exists_in_s3(f"s3://{test_file_key}")
-    assert not check_file_exists_in_s3("s3://random_bucket/prefix/file.json")
 
 
 def test_s3_object_read_text(pipeline_s3_client, test_file_key, test_file_json):
@@ -59,9 +51,11 @@ def test_save_ndarray_to_s3_as_npy(pipeline_s3_client, s3_bucket_and_region):
         np.array([1, 2, 3]), f"s3://{s3_bucket_and_region['bucket']}/prefix/test.npy"
     )
 
-    assert check_file_exists_in_s3(
-        f"s3://{s3_bucket_and_region['bucket']}/prefix/test.npy"
+    response = pipeline_s3_client.list_objects_v2(
+        Bucket=s3_bucket_and_region["bucket"], Prefix="prefix/test.npy"
     )
+    contents = response.get("Contents", [])
+    assert any(obj["Key"] == "prefix/test.npy" for obj in contents)
 
     try:
         save_ndarray_to_s3_as_npy(
