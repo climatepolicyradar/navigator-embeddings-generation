@@ -14,7 +14,18 @@ jobs:
   tag-main-with-semver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
+
+      - name: Remove unused software
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true`
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: true
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,8 +44,13 @@ jobs:
 
       - name: Docker retag locally
         run: |
-          docker tag ${DOCKER_REGISTRY}/navigator-embeddings-generation:main-${GITHUB_SHA::8}  navigator-embeddings-generation:main-${GITHUB_SHA::8} 
+          docker tag ${DOCKER_REGISTRY}/navigator-embeddings-generation:main-${GITHUB_SHA::8}  navigator-embeddings-generation:main-${GITHUB_SHA::8}
 
       - name: Docker push
         run: |
           .github/retag-and-push.sh navigator-embeddings-generation main-${GITHUB_SHA::8}
+
+      - name: Clean up Docker
+        if: always()
+        run: |
+          docker system prune -af --volumes || true
