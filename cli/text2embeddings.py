@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from src import config
 from src.languages import get_docs_of_supported_language
 from src.ml import SBERTEncoder
-from src.s3 import check_file_exists_in_s3, save_ndarray_to_s3_as_npy, write_json_to_s3
+from src.s3 import save_ndarray_to_s3_as_npy, write_json_to_s3
 from src.utils import (
     encode_parser_output,
     filter_on_block_type,
@@ -73,27 +73,6 @@ def process_task(
         s3: Whether to use S3 for I/O
         device: Device to use for encoding
     """
-    task_output_path = os.path.join(output_dir, task.document_id + ".json")
-
-    (
-        write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
-        if s3
-        else Path(task_output_path).write_text(task.model_dump_json(indent=2))
-    )
-
-    embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
-
-    file_exists = (
-        check_file_exists_in_s3(embeddings_output_path)
-        if s3
-        else os.path.exists(embeddings_output_path)
-    )
-    if file_exists:
-        logger.info(
-            f"Embeddings output file '{embeddings_output_path}' already exists, "
-            "skipping processing."
-        )
-        return
 
     description_embedding, text_embeddings = encode_parser_output(
         encoder, task, config.ENCODING_BATCH_SIZE, device=device
@@ -105,10 +84,20 @@ def process_task(
         else description_embedding.reshape(1, -1)
     )
 
+    embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
+
     (
         save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path)
         if s3
         else np.save(embeddings_output_path, combined_embeddings)
+    )
+
+    task_output_path = os.path.join(output_dir, task.document_id + ".json")
+
+    (
+        write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
+        if s3
+        else Path(task_output_path).write_text(task.model_dump_json(indent=2))
     )
 
 
