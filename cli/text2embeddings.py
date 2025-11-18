@@ -1,24 +1,27 @@
 """CLI to convert JSON documents outputted by the PDF parsing pipeline to embeddings."""
 
+import json
 import logging
 import logging.config
 import os
 from pathlib import Path
+from typing import NewType, Optional
 
 import click
 import numpy as np
+from cpr_sdk.parser_models import ParserOutput
+from pydantic import BaseModel
 from tqdm.auto import tqdm
-from typing import NewType
 
+from src import config
 from src.languages import get_docs_of_supported_language
 from src.ml import SBERTEncoder
-from src import config
+from src.s3 import check_file_exists_in_s3, save_ndarray_to_s3_as_npy, write_json_to_s3
 from src.utils import (
-    filter_on_block_type,
     encode_parser_output,
+    filter_on_block_type,
     get_Text2EmbeddingsInput_array,
 )
-from src.s3 import check_file_exists_in_s3, write_json_to_s3, save_ndarray_to_s3_as_npy
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_LOGGING = {
@@ -44,6 +47,92 @@ logging.config.dictConfig(DEFAULT_LOGGING)
 
 # Example: CCLW.executive.1813.2418
 DocumentImportId = NewType("DocumentImportId", str)
+
+
+class EmbeddingResult(BaseModel):
+    """Result of processing a document for embeddings generation."""
+
+    document_id: str
+    error: Optional[str] = None
+
+
+def process_task(
+    task: ParserOutput,
+    encoder: SBERTEncoder,
+    output_dir: str,
+    s3: bool,
+    device: str,
+) -> None:
+    """
+    Process a single task to generate embeddings.
+
+    Args:
+        task: The parser output task to process
+        encoder: The sentence encoder to use
+        output_dir: Directory to save outputs to
+        s3: Whether to use S3 for I/O
+        device: Device to use for encoding
+    """
+    task_output_path = os.path.join(output_dir, task.document_id + ".json")
+
+    (
+        write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
+        if s3
+        else Path(task_output_path).write_text(task.model_dump_json(indent=2))
+    )
+
+    embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
+
+    file_exists = (
+        check_file_exists_in_s3(embeddings_output_path)
+        if s3
+        else os.path.exists(embeddings_output_path)
+    )
+    if file_exists:
+        logger.info(
+            f"Embeddings output file '{embeddings_output_path}' already exists, "
+            "skipping processing."
+        )
+        return
+
+    description_embedding, text_embeddings = encode_parser_output(
+        encoder, task, config.ENCODING_BATCH_SIZE, device=device
+    )
+
+    combined_embeddings = (
+        np.vstack([description_embedding, text_embeddings])
+        if text_embeddings is not None
+        else description_embedding.reshape(1, -1)
+    )
+
+    (
+        save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path)
+        if s3
+        else np.save(embeddings_output_path, combined_embeddings)
+    )
+
+
+def write_results_file(
+    results: list[EmbeddingResult], output_dir: str, s3: bool
+) -> None:
+    """
+    Write results to a JSON file.
+
+    Args:
+        results: List of embedding results
+        output_dir: Directory to write results file to
+        s3: Whether to write to S3
+    """
+    results_path = os.path.join(output_dir, "embeddings_results.json")
+    results_json = json.dumps(
+        [result.model_dump() for result in results],
+        indent=2,
+    )
+
+    if s3:
+        write_json_to_s3(results_json, results_path)
+    else:
+        Path(results_path).write_text(results_json)
 
 
 class CommaSeparatedList(click.ParamType):
@@ -179,48 +268,25 @@ def run_embeddings_generation(
             }
         },
     )
+
+    results: list[EmbeddingResult] = []
+
     for task in tqdm(tasks, unit="docs"):
-        task_output_path = os.path.join(output_dir, task.document_id + ".json")
+        result = EmbeddingResult(document_id=task.document_id)
 
         try:
-            write_json_to_s3(
-                task.model_dump_json(indent=2), task_output_path
-            ) if s3 else Path(task_output_path).write_text(
-                task.model_dump_json(indent=2)
-            )
+            process_task(task, encoder, output_dir, s3, device)
         except Exception as e:
-            logger.info(
-                "Failed to write embeddings data to s3.",
-                extra={"props": {"task_output_path": task_output_path, "exception": e}},
-            )
+            msg = f"Processing document {task.document_id} failed: {e}"
+            logger.exception(msg, extra={"props": {"document_id": task.document_id}})
+            result.error = f"{type(e).__name__}: {str(e)}"
 
-        embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
+        results.append(result)
 
-        file_exists = (
-            check_file_exists_in_s3(embeddings_output_path)
-            if s3
-            else os.path.exists(embeddings_output_path)
-        )
-        if file_exists:
-            logger.info(
-                f"Embeddings output file '{embeddings_output_path}' already exists, "
-                "skipping processing."
-            )
-            continue
+    logger.info("Done processing documents.")
 
-        description_embedding, text_embeddings = encode_parser_output(
-            encoder, task, config.ENCODING_BATCH_SIZE, device=device
-        )
-
-        combined_embeddings = (
-            np.vstack([description_embedding, text_embeddings])
-            if text_embeddings is not None
-            else description_embedding.reshape(1, -1)
-        )
-
-        save_ndarray_to_s3_as_npy(
-            combined_embeddings, embeddings_output_path
-        ) if s3 else np.save(embeddings_output_path, combined_embeddings)
+    # Write out results
+    write_results_file(results, output_dir, s3)
 
 
 if __name__ == "__main__":
