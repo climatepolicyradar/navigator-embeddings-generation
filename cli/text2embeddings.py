@@ -17,12 +17,8 @@ from tqdm.auto import tqdm
 from src import config
 from src.languages import get_docs_of_supported_language
 from src.ml import SBERTEncoder
-from src.s3 import save_ndarray_to_s3_as_npy, write_json_to_s3
-from src.utils import (
-    encode_parser_output,
-    filter_on_block_type,
-    get_Text2EmbeddingsInput_array,
-)
+from src.s3 import s3_object_read_text, save_ndarray_to_s3_as_npy, write_json_to_s3
+from src.utils import encode_parser_output, filter_on_block_type
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DEFAULT_LOGGING = {
@@ -58,48 +54,98 @@ class EmbeddingResult(BaseModel):
 
 
 def process_task(
-    task: ParserOutput,
+    document_id: DocumentImportId,
     encoder: SBERTEncoder,
+    input_dir: str,
     output_dir: str,
     s3: bool,
     device: str,
-) -> None:
+) -> EmbeddingResult:
     """
-    Process a single task to generate embeddings.
+    Process a single document end-to-end: load, validate, filter, encode, and save.
+
+    This function handles all steps for a single document:
+    1. Load document from S3 or local filesystem
+    2. Check if language is supported
+    3. Filter unwanted text block types
+    4. Generate embeddings
+    5. Save embeddings and document JSON
 
     Args:
-        task: The parser output task to process
+        document_id: The document import ID to process
         encoder: The sentence encoder to use
+        input_dir: Directory containing input JSON files
         output_dir: Directory to save outputs to
         s3: Whether to use S3 for I/O
         device: Device to use for encoding
+
+    Returns:
+        EmbeddingResult with document_id and optional error message
     """
+    result = EmbeddingResult(document_id=document_id)
 
-    description_embedding, text_embeddings = encode_parser_output(
-        encoder, task, config.ENCODING_BATCH_SIZE, device=device
-    )
+    try:
+        # Step 1: Load document
+        file_path = os.path.join(input_dir, document_id + ".json")
+        json_content = (
+            s3_object_read_text(file_path) if s3 else Path(file_path).read_text()
+        )
+        task = ParserOutput.model_validate_json(json_content)
 
-    combined_embeddings = (
-        np.vstack([description_embedding, text_embeddings])
-        if text_embeddings is not None
-        else description_embedding.reshape(1, -1)
-    )
+        # Step 2: Check if language is supported
+        # get_docs_of_supported_language expects a list, so we wrap and unwrap
+        supported_tasks = get_docs_of_supported_language([task])
+        if not supported_tasks:
+            result.error = "Filtered out: unsupported language"
+            return result
+        task = supported_tasks[0]
 
-    embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
+        # Step 3: Filter unwanted text block types
+        filtered_tasks = filter_on_block_type(
+            inputs=[task], remove_block_types=config.BLOCKS_TO_FILTER
+        )
+        task = filtered_tasks[0]
 
-    (
-        save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path)
-        if s3
-        else np.save(embeddings_output_path, combined_embeddings)
-    )
+        # Step 4: Generate embeddings
+        description_embedding, text_embeddings = encode_parser_output(
+            encoder, task, config.ENCODING_BATCH_SIZE, device=device
+        )
 
-    task_output_path = os.path.join(output_dir, task.document_id + ".json")
+        combined_embeddings = (
+            np.vstack([description_embedding, text_embeddings])
+            if text_embeddings is not None
+            else description_embedding.reshape(1, -1)
+        )
 
-    (
-        write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
-        if s3
-        else Path(task_output_path).write_text(task.model_dump_json(indent=2))
-    )
+        # Step 5: Save embeddings
+        embeddings_output_path = os.path.join(output_dir, document_id + ".npy")
+        if not s3:
+            Path(embeddings_output_path).parent.mkdir(parents=True, exist_ok=True)
+        (
+            save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path)
+            if s3
+            else np.save(embeddings_output_path, combined_embeddings)
+        )
+
+        # Step 6: Save document JSON
+        task_output_path = os.path.join(output_dir, document_id + ".json")
+        if not s3:
+            Path(task_output_path).parent.mkdir(parents=True, exist_ok=True)
+        (
+            write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
+            if s3
+            else Path(task_output_path).write_text(task.model_dump_json(indent=2))
+        )
+
+    except Exception as e:
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        logger.exception(
+            f"Processing document {document_id} failed",
+            extra={"props": {"document_id": document_id}},
+        )
+        result.error = error_msg
+
+    return result
 
 
 def write_results_file(
@@ -224,68 +270,49 @@ def run_embeddings_generation(
         },
     )
 
-    logger.info("Constructing Text2EmbeddingsInput objects from parser output jsons.")
-    tasks = get_Text2EmbeddingsInput_array(
-        embeddings_input_dir_path, s3, document_import_ids
-    )
-
-    logger.info(
-        "Filtering tasks to those with supported languages.",
-        extra={"props": {"target_languages": config.TARGET_LANGUAGES}},
-    )
-    tasks = get_docs_of_supported_language(tasks)
-    logger.info(
-        f"Found {len(tasks)} tasks with supported languages.",
-        extra={
-            "props": {
-                "tasks": [
-                    {
-                        "lang": task.languages,
-                        "translated": task.translated,
-                        "document_id": task.document_id,
-                    }
-                    for task in tasks
-                ]
-            }
-        },
-    )
-
-    logger.info(
-        "Filtering unwanted text block types.",
-        extra={"props": {"BLOCKS_TO_FILTER": config.BLOCKS_TO_FILTER}},
-    )
-    tasks = filter_on_block_type(
-        inputs=tasks, remove_block_types=config.BLOCKS_TO_FILTER
-    )
-
     logger.info(f"Loading sentence-transformer model {config.SBERT_MODEL}")
     encoder = SBERTEncoder(config.SBERT_MODEL)
 
     logger.info(
-        "Encoding text from documents.",
+        "Processing documents.",
         extra={
             "props": {
                 "ENCODING_BATCH_SIZE": config.ENCODING_BATCH_SIZE,
-                "tasks_number": len(tasks),
+                "total_documents": len(document_import_ids),
+                "target_languages": config.TARGET_LANGUAGES,
+                "blocks_to_filter": config.BLOCKS_TO_FILTER,
             }
         },
     )
 
+    # Process each document independently
     results: list[EmbeddingResult] = []
 
-    for task in tqdm(tasks, unit="docs"):
-        result = EmbeddingResult(document_id=task.document_id)
-
-        try:
-            process_task(task, encoder, embeddings_output_dir_path, s3, device)
-        except Exception as e:
-            msg = f"Processing document {task.document_id} failed: {e}"
-            logger.exception(msg, extra={"props": {"document_id": task.document_id}})
-            result.error = f"{type(e).__name__}: {str(e)}"
-
+    for document_id in tqdm(document_import_ids, unit="docs"):
+        result = process_task(
+            document_id=document_id,
+            encoder=encoder,
+            input_dir=embeddings_input_dir_path,
+            output_dir=embeddings_output_dir_path,
+            s3=s3,
+            device=device,
+        )
         results.append(result)
 
-    logger.info("Done processing documents.")
+    # Log summary statistics
+    successful = sum(1 for r in results if r.error is None)
+    failed = len(results) - successful
+
+    logger.info(
+        "Done processing documents.",
+        extra={
+            "props": {
+                "total": len(results),
+                "successful": successful,
+                "failed": failed,
+            }
+        },
+    )
 
     # Write out results
     write_results_file(results, input_dir_path, s3)
