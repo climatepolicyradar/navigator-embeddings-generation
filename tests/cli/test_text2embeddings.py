@@ -101,6 +101,81 @@ def test_run_encoder_local(
                     assert "error" in result
 
 
+def test_run_embeddings_on_translated(
+    test_html_file_json,
+    test_pdf_file_json,
+    test_no_content_type_file_json,
+):
+    """Test that the embeddings generation cli can handle translated documents."""
+
+    with tempfile.TemporaryDirectory() as embeddings_input_dir_path:
+        with tempfile.TemporaryDirectory() as embeddings_output_dir_path:
+            with tempfile.TemporaryDirectory() as input_dir_path:
+                # Create HTML File
+                html_file_path = (
+                    Path(embeddings_input_dir_path)
+                    / f"{test_html_file_json['document_id']}.json"
+                )
+                html_file_path.write_text(json.dumps(test_html_file_json))
+
+                # Create PDF File
+                pdf_file_path = (
+                    Path(embeddings_input_dir_path)
+                    / f"{test_pdf_file_json['document_id']}.json"
+                )
+                pdf_file_path.write_text(json.dumps(test_pdf_file_json))
+
+                # Create No Content Type File (both non/translated)
+                test_no_content_type_file_json["translated"] = True
+                no_content_type_translated_file_path = (
+                    Path(embeddings_input_dir_path)
+                    / f"{test_no_content_type_file_json['document_id']}_translated_en.json"
+                )
+                no_content_type_translated_file_path.write_text(
+                    json.dumps(test_no_content_type_file_json)
+                )
+
+                test_no_content_type_file_json["translated"] = False
+                test_no_content_type_file_json["languages"] = ["fr"]
+
+                no_content_type_file_path = (
+                    Path(embeddings_input_dir_path)
+                    / f"{test_no_content_type_file_json['document_id']}.json"
+                )
+                no_content_type_file_path.write_text(
+                    json.dumps(test_no_content_type_file_json)
+                )
+
+                document_import_ids = [
+                    test_html_file_json["document_id"],
+                    test_pdf_file_json["document_id"],
+                    test_no_content_type_file_json["document_id"],
+                ]
+
+                runner = CliRunner()
+                result = runner.invoke(
+                    run_as_cli,
+                    [
+                        input_dir_path,
+                        embeddings_input_dir_path,
+                        embeddings_output_dir_path,
+                        ",".join(document_import_ids),
+                    ],
+                )
+                assert result.exit_code == 0
+
+                assert set(Path(embeddings_output_dir_path).glob("*.json")) == {
+                    Path(embeddings_output_dir_path) / "test_html.json",
+                    Path(embeddings_output_dir_path) / "test_pdf.json",
+                    Path(embeddings_output_dir_path) / "test_no_content_type.json",
+                }
+                assert set(Path(embeddings_output_dir_path).glob("*.npy")) == {
+                    Path(embeddings_output_dir_path) / "test_html.npy",
+                    Path(embeddings_output_dir_path) / "test_pdf.npy",
+                    Path(embeddings_output_dir_path) / "test_no_content_type.npy",
+                }
+
+
 def test_s3_client(
     s3_bucket_and_region,
     pipeline_s3_objects_main,
