@@ -187,64 +187,56 @@ def test_parser_output_array() -> List[ParserOutput]:
 
 
 @pytest.fixture
-def test_parser_output_no_source_url_no_lang_no_data() -> List[ParserOutput]:
-    return [
-        get_parser_output(
-            html_data=None,
-            source_url=None,
-            languages=None,
-            content_type=None,
-            translated=False,
-        )
-    ]
+def test_parser_output_no_source_url_no_lang_no_data() -> ParserOutput:
+    return get_parser_output(
+        html_data=None,
+        source_url=None,
+        languages=None,
+        content_type=None,
+        translated=False,
+    )
 
 
 @pytest.fixture
-def test_parser_output_source_url_no_lang_no_data() -> List[ParserOutput]:
-    return [
-        get_parser_output(
-            html_data=None,
-            source_url="https://www.example.com/files/climate-document.pdf",
-            languages=None,
-            content_type=None,
-            translated=False,
-        )
-    ]
+def test_parser_output_source_url_no_lang_no_data() -> ParserOutput:
+    return get_parser_output(
+        html_data=None,
+        source_url="https://www.example.com/files/climate-document.pdf",
+        languages=None,
+        content_type=None,
+        translated=False,
+    )
 
 
 @pytest.fixture
-def test_parser_output_source_url_supported_lang_data() -> List[ParserOutput]:
-    return [
-        get_parser_output(
-            html_data=HTMLData(
-                has_valid_text=True,
-                text_blocks=[
-                    get_html_text_block("Table"),
-                    get_html_text_block("Google Text Block"),
-                ],
-            ),
-            source_url="https://www.example.com/files/climate-document.pdf",
-            languages=["en"],
-            content_type="text/html",
-            translated=False,
-        )
-    ]
+def test_parser_output_source_url_supported_lang_data() -> ParserOutput:
+    return get_parser_output(
+        html_data=HTMLData(
+            has_valid_text=True,
+            text_blocks=[
+                get_html_text_block("Table"),
+                get_html_text_block("Google Text Block"),
+            ],
+        ),
+        source_url="https://www.example.com/files/climate-document.pdf",
+        languages=["en"],
+        content_type="text/html",
+        translated=False,
+    )
 
 
 @pytest.fixture
-def test_parser_output_source_url_un_supported_lang_data() -> List[ParserOutput]:
-    return [
-        get_parser_output(
-            html_data=HTMLData(
-                has_valid_text=True,
-                text_blocks=[
-                    get_html_text_block("Table"),
-                    get_html_text_block("Google Text Block"),
-                ],
-            ),
-            source_url="https://www.example.com/files/climate-document.pdf",
-            languages=["fr"],
-            content_type="text/html",
-            translated=False,
-        )
-    ]
+def test_parser_output_source_url_un_supported_lang_data() -> ParserOutput:
+    return get_parser_output(
+        html_data=HTMLData(
+            has_valid_text=True,
+            text_blocks=[
+                get_html_text_block("Table"),
+                get_html_text_block("Google Text Block"),
+            ],
+        ),
+        source_url="https://www.example.com/files/climate-document.pdf",
+        languages=["fr"],
+        content_type="text/html",
+        translated=False,
+    )

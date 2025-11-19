@@ -1,13 +1,10 @@
 import logging
-import os
-from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
 
 from src.ml import SentenceEncoder
-from src.s3 import s3_object_read_text
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +47,9 @@ def filter_blocks(
 
 
 def filter_on_block_type(
-    inputs: Sequence[ParserOutput], remove_block_types: List[str]
-) -> Sequence[ParserOutput]:
-    """
-    Filter a sequence of ParserOutputs.
-
-    Remove the text blocks that are of the types declared in the remove block types
-    array.
-    """
+    document: ParserOutput, remove_block_types: List[str]
+) -> ParserOutput:
+    """Remove the text blocks of the types declared in the remove block types array."""
     for _filter in remove_block_types:
         try:
             BlockType(_filter)
@@ -68,15 +60,12 @@ def filter_on_block_type(
             )
             remove_block_types.remove(_filter)
 
-    return [
-        replace_text_blocks(
-            block=_input,
-            new_text_blocks=filter_blocks(
-                parser_output=_input, remove_block_types=remove_block_types
-            ),
-        )
-        for _input in inputs
-    ]
+    return replace_text_blocks(
+        block=document,
+        new_text_blocks=filter_blocks(
+            parser_output=document, remove_block_types=remove_block_types
+        ),
+    )
 
 
 def encode_parser_output(
@@ -113,21 +102,3 @@ def encode_parser_output(
         text_embeddings = None
 
     return description_embedding, text_embeddings
-
-
-def get_Text2EmbeddingsInput_array(
-    input_dir: str, s3: bool, files_to_process_ids: Sequence[str]
-) -> List[ParserOutput]:
-    """Construct ParserOutput objects from parser output jsons.
-
-    These objects will be used to generate embeddings and are either read in from S3
-    or from the local file system.
-    """
-    return [
-        ParserOutput.model_validate_json(
-            s3_object_read_text(os.path.join(input_dir, id_ + ".json"))
-            if s3
-            else Path(os.path.join(input_dir, id_ + ".json")).read_text()
-        )
-        for id_ in files_to_process_ids
-    ]

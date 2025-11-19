@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from cpr_sdk.parser_models import ParserOutput
 
@@ -27,43 +26,40 @@ def validate_languages_decorator(func):
     return wrapper
 
 
-def task_has_one_lang_that_is_supported(task: ParserOutput) -> bool:
-    """Return true if the task has one language that is supported by the encoder."""
+def document_has_one_lang_that_is_supported(document: ParserOutput) -> bool:
+    """Return true if the document has one language that is supported by the encoder."""
     return (
-        task.languages
-        and (len(task.languages) == 1)
+        document.languages
+        and (len(document.languages) == 1)
         and (
-            task.languages[0]
+            document.languages[0]
             in config.ENCODER_SUPPORTED_LANGUAGES.union(config.TARGET_LANGUAGES)
         )
     )
 
 
-def task_has_no_source_url_languages_or_data(task: ParserOutput) -> bool:
-    """Return true if the task has no source url, languages or html/pdf data."""
+def document_has_no_source_url_languages_or_data(document: ParserOutput) -> bool:
+    """Return true if the document has no source url, languages or html/pdf data."""
     return (
-        not task.document_source_url
-        and not task.languages
-        and task.html_data is None
-        and task.pdf_data is None
+        not document.document_source_url
+        and not document.languages
+        and document.html_data is None
+        and document.pdf_data is None
     )
 
 
 @validate_languages_decorator
-def get_docs_of_supported_language(
-    tasks: List[ParserOutput],
-) -> List[ParserOutput]:
-    """Filter out documents that don't meet language requirements.
+def doc_has_supported_language(document: ParserOutput) -> bool:
+    """Identify documents that don't meet language requirements.
 
     Empty documents that have a source url will have a translated output produced for
     them by the pdf parser with a language that is supported by the encoder. Thus,
     we want to filter the root documents out (with no language) as we don't want to
     encode the root non-translated document as well. This is why we have the
-    task_has_one_lang_that_is_supported function.
+    document_has_one_lang_that_is_supported function.
     """
-    return [
-        task
-        for task in tasks
-        if task_has_one_lang_that_is_supported(task)
-        or task_has_no_source_url_languages_or_data(task)
-    ]
+    if document_has_one_lang_that_is_supported(
+        document
+    ) or document_has_no_source_url_languages_or_data(document):
+        return True
+    return False

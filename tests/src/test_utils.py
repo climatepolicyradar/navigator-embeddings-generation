@@ -17,28 +17,31 @@ from src.utils import (
 def test_filter_on_block_type(test_parser_output_array):
     """Tests that the filter_on_block_type function removes the correct text blocks."""
 
-    filtered_inputs = filter_on_block_type(
-        inputs=test_parser_output_array, remove_block_types=["Text", "Figure"]
+    parser_output = filter_on_block_type(
+        document=test_parser_output_array[0], remove_block_types=["Text", "Figure"]
     )
 
-    assert filtered_inputs[0].html_data is not None
-    assert len(filtered_inputs[0].html_data.text_blocks) == 2
+    assert parser_output.html_data is not None
+    assert len(parser_output.html_data.text_blocks) == 2
 
-    assert filtered_inputs[0].html_data.text_blocks[0].type == "Table"
-    assert filtered_inputs[0].html_data.text_blocks[0].text == ["test_text"]
+    assert parser_output.html_data.text_blocks[0].type == "Table"
+    assert parser_output.html_data.text_blocks[0].text == ["test_text"]
 
-    assert filtered_inputs[0].html_data.text_blocks[1].type == "Google Text Block"
-    assert filtered_inputs[0].html_data.text_blocks[1].text == ["test_text"]
+    assert parser_output.html_data.text_blocks[1].type == "Google Text Block"
+    assert parser_output.html_data.text_blocks[1].text == ["test_text"]
 
     # Assert that we can filter on IndexerInputs that don't have valid text
-    assert filtered_inputs[1].html_data is not None
-    assert len(filtered_inputs[1].html_data.text_blocks) == 2
+    parser_output = filter_on_block_type(
+        document=test_parser_output_array[1], remove_block_types=["Text", "Figure"]
+    )
+    assert parser_output.html_data is not None
+    assert len(parser_output.html_data.text_blocks) == 2
 
-    assert filtered_inputs[1].html_data.text_blocks[0].type == "Table"
-    assert filtered_inputs[1].html_data.text_blocks[0].text == ["test_text"]
+    assert parser_output.html_data.text_blocks[0].type == "Table"
+    assert parser_output.html_data.text_blocks[0].text == ["test_text"]
 
-    assert filtered_inputs[1].html_data.text_blocks[1].type == "Google Text Block"
-    assert filtered_inputs[1].html_data.text_blocks[1].text == ["test_text"]
+    assert parser_output.html_data.text_blocks[1].type == "Google Text Block"
+    assert parser_output.html_data.text_blocks[1].text == ["test_text"]
 
 
 def test_has_valid_text_override(test_parser_output_array: Sequence[ParserOutput]):
@@ -131,7 +134,3 @@ def test_encode_indexer_input(test_pdf_file_json):  # noqa: F811
 
     assert isinstance(description_embeddings, np.ndarray)
     assert isinstance(text_embeddings, np.ndarray)
-
-
-# TODO get_Text2EmbeddingsInput_array
-#   TODO needs s3 files, local files, of the form json IndexerInput objects
