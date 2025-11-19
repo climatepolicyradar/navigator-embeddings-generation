@@ -53,7 +53,7 @@ class EmbeddingResult(BaseModel):
     error: Optional[str] = None
 
 
-def process_task(
+def process_document(
     document_id: DocumentImportId,
     encoder: SBERTEncoder,
     input_dir: str,
@@ -90,25 +90,28 @@ def process_task(
         json_content = (
             s3_object_read_text(file_path) if s3 else Path(file_path).read_text()
         )
-        task = ParserOutput.model_validate_json(json_content)
+        parser_output = ParserOutput.model_validate_json(json_content)
 
         # Step 2: Check if language is supported
-        # get_docs_of_supported_language expects a list, so we wrap and unwrap
-        supported_tasks = get_docs_of_supported_language([task])
-        if not supported_tasks:
+        parser_outputs_with_supported_lang: list[
+            ParserOutput
+        ] = get_docs_of_supported_language([parser_output])
+        if not parser_outputs_with_supported_lang:
             result.error = "Filtered out: unsupported language"
             return result
-        task = supported_tasks[0]
+        parser_output = parser_outputs_with_supported_lang[0]
 
         # Step 3: Filter unwanted text block types
-        filtered_tasks = filter_on_block_type(
-            inputs=[task], remove_block_types=config.BLOCKS_TO_FILTER
+        parser_outputs_with_filtered_text_blocks: list[
+            ParserOutput
+        ] = filter_on_block_type(
+            inputs=[parser_output], remove_block_types=config.BLOCKS_TO_FILTER
         )
-        task = filtered_tasks[0]
+        parser_output = parser_outputs_with_filtered_text_blocks[0]
 
         # Step 4: Generate embeddings
         description_embedding, text_embeddings = encode_parser_output(
-            encoder, task, config.ENCODING_BATCH_SIZE, device=device
+            encoder, parser_output, config.ENCODING_BATCH_SIZE, device=device
         )
 
         combined_embeddings = (
@@ -118,23 +121,31 @@ def process_task(
         )
 
         # Step 5: Save embeddings
-        embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
+        embeddings_output_path_npy = os.path.join(
+            output_dir, parser_output.document_id + ".npy"
+        )
         if not s3:
-            Path(embeddings_output_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(embeddings_output_path_npy).parent.mkdir(parents=True, exist_ok=True)
         (
-            save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path)
+            save_ndarray_to_s3_as_npy(combined_embeddings, embeddings_output_path_npy)
             if s3
-            else np.save(embeddings_output_path, combined_embeddings)
+            else np.save(embeddings_output_path_npy, combined_embeddings)
         )
 
         # Step 6: Save document JSON
-        task_output_path = os.path.join(output_dir, task.document_id + ".json")
+        embeddings_output_path_json = os.path.join(
+            output_dir, parser_output.document_id + ".json"
+        )
         if not s3:
-            Path(task_output_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(embeddings_output_path_json).parent.mkdir(parents=True, exist_ok=True)
         (
-            write_json_to_s3(task.model_dump_json(indent=2), task_output_path)
+            write_json_to_s3(
+                parser_output.model_dump_json(indent=2), embeddings_output_path_json
+            )
             if s3
-            else Path(task_output_path).write_text(task.model_dump_json(indent=2))
+            else Path(embeddings_output_path_json).write_text(
+                parser_output.model_dump_json(indent=2)
+            )
         )
 
     except Exception as e:
@@ -289,7 +300,7 @@ def run_embeddings_generation(
     results: list[EmbeddingResult] = []
 
     for document_id in tqdm(document_import_ids, unit="docs"):
-        result = process_task(
+        result = process_document(
             document_id=document_id,
             encoder=encoder,
             input_dir=embeddings_input_dir_path,
