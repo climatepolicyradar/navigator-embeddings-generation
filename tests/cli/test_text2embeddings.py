@@ -2,12 +2,19 @@ import io
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import numpy as np
 from click.testing import CliRunner
 from cpr_sdk.parser_models import ParserOutput
 
-from cli.text2embeddings import run_as_cli
+from cli.text2embeddings import (
+    EmbeddingResult,
+    process_document,
+    run_as_cli,
+    write_results_file,
+)
+from src.s3 import s3_object_read_text
 
 
 def test_run_encoder_local(
@@ -69,6 +76,29 @@ def test_run_encoder_local(
                 assert np.load(
                     str(Path(embeddings_output_dir_path) / "test_html.npy")
                 ).shape == (1, 768)
+
+                # Validate that results file is produced
+                results_dir = Path(input_dir_path) / "reports" / "embeddings"
+                assert results_dir.exists()
+
+                # Get the results file (should be only one .json file)
+                results_files = list(results_dir.glob("*.json"))
+                assert len(results_files) == 1
+
+                results_file = results_files[0]
+
+                # Validate results file contents
+                file_content = json.loads(results_file.read_text())
+                assert len(file_content) == 3
+
+                # Validate that all document IDs are present in results
+                result_document_ids = {result["document_id"] for result in file_content}
+                assert result_document_ids == set(document_import_ids)
+
+                # Validate that results have the expected structure
+                for result in file_content:
+                    assert "document_id" in result
+                    assert "error" in result
 
 
 def test_s3_client(
@@ -160,3 +190,187 @@ def test_run_encoder_s3(
         file_text = file_obj["Body"]
         file_bytes = io.BytesIO(file_text.read())
         assert np.load(file_bytes).shape[1] == 768
+
+    # Validate that results file is produced in S3
+    results_prefix = "input/2023-04-13T09.17.37.953810/reports/embeddings/"
+    results_list_response = pipeline_s3_client_main.client.list_objects_v2(
+        Bucket=s3_bucket_and_region["bucket"], Prefix=results_prefix
+    )
+
+    # Should have one results file
+    assert results_list_response["KeyCount"] == 1
+
+    # Get the results file key
+    results_key = results_list_response["Contents"][0]["Key"]
+
+    # Read and validate the results file
+    results_path = f"s3://{s3_bucket_and_region['bucket']}/{results_key}"
+    file_content = json.loads(s3_object_read_text(results_path))
+
+    assert len(file_content) == len(document_import_ids)
+
+    # Validate that all document IDs are present in results
+    result_document_ids = {result["document_id"] for result in file_content}
+    assert result_document_ids == set(document_import_ids)
+
+    # Validate that results have the expected structure
+    for result in file_content:
+        assert "document_id" in result
+        assert "error" in result
+
+
+def test_process_document_success(test_pdf_file_json) -> None:
+    """Test that process_document successfully processes a document and collects results."""
+    document_id = "test_doc_123"
+
+    with tempfile.TemporaryDirectory() as input_dir:
+        with tempfile.TemporaryDirectory() as output_dir:
+            # Create input JSON file
+            input_file = Path(input_dir) / f"{document_id}.json"
+            input_file.write_text(json.dumps(test_pdf_file_json))
+
+            # Mock encoder
+            mock_encoder = MagicMock()
+            mock_encoder.encode.return_value = np.array([0.1] * 768)
+            mock_encoder.encode_batch.return_value = np.array(
+                [[0.2] * 768, [0.3] * 768]
+            )
+
+            # Process document
+            result = process_document(
+                document_id=document_id,
+                encoder=mock_encoder,
+                input_dir=input_dir,
+                output_dir=output_dir,
+                s3=False,
+                device="cpu",
+            )
+
+            # Validate result collection
+            assert isinstance(result, EmbeddingResult)
+            assert result.document_id == document_id
+            assert result.error is None
+
+            # Validate output files were created
+            output_json = Path(output_dir) / f"{test_pdf_file_json['document_id']}.json"
+            output_npy = Path(output_dir) / f"{test_pdf_file_json['document_id']}.npy"
+
+            assert output_json.exists()
+            assert output_npy.exists()
+
+            # Validate JSON output
+            output_data = json.loads(output_json.read_text())
+            assert ParserOutput.model_validate(output_data)
+
+            # Validate embeddings output
+            embeddings = np.load(str(output_npy))
+            assert embeddings.shape[1] == 768
+
+
+def test_process_document_error_handling() -> None:
+    """Test that process_document catches errors and returns them in the result."""
+    document_id = "test_doc_456"
+
+    with tempfile.TemporaryDirectory() as input_dir:
+        with tempfile.TemporaryDirectory() as output_dir:
+            # Create input JSON file with invalid content to trigger an error
+            input_file = Path(input_dir) / f"{document_id}.json"
+            input_file.write_text("invalid json content")
+
+            # Mock encoder
+            mock_encoder = MagicMock()
+
+            # Process document - should catch the JSON parsing error
+            result = process_document(
+                document_id=document_id,
+                encoder=mock_encoder,
+                input_dir=input_dir,
+                output_dir=output_dir,
+                s3=False,
+                device="cpu",
+            )
+
+            # Validate error was caught and returned
+            assert isinstance(result, EmbeddingResult)
+            assert result.document_id == document_id
+            assert result.error is not None
+            assert (
+                "ValidationError" in result.error
+                or "JSONDecodeError" in result.error
+                or "ValueError" in result.error
+            )
+
+
+def test_write_results_file_local() -> None:
+    """Test that write_results_file writes results to local filesystem correctly."""
+    results = [
+        EmbeddingResult(document_id="doc1", error=None),
+        EmbeddingResult(document_id="doc2", error="SomeError: error message"),
+        EmbeddingResult(document_id="doc3", error=None),
+    ]
+
+    with tempfile.TemporaryDirectory() as input_dir:
+        # Write results to local filesystem
+        write_results_file(results=results, input_dir_path=input_dir, s3=False)
+
+        # Find the results file (it has a random UUID filename)
+        results_dir = Path(input_dir) / "reports" / "embeddings"
+        assert results_dir.exists()
+
+        # Get the results file (should be only one .json file)
+        results_files = list(results_dir.glob("*.json"))
+        assert len(results_files) == 1
+
+        results_file = results_files[0]
+
+        # Validate file contents
+        file_content = json.loads(results_file.read_text())
+        assert len(file_content) == 3
+
+        # Validate each result
+        assert file_content[0]["document_id"] == "doc1"
+        assert file_content[0]["error"] is None
+
+        assert file_content[1]["document_id"] == "doc2"
+        assert file_content[1]["error"] == "SomeError: error message"
+
+        assert file_content[2]["document_id"] == "doc3"
+        assert file_content[2]["error"] is None
+
+
+def test_write_results_file_s3(s3_bucket_and_region, pipeline_s3_client_main) -> None:
+    """Test that write_results_file writes results to S3 correctly."""
+    results = [
+        EmbeddingResult(document_id="doc1", error=None),
+        EmbeddingResult(document_id="doc2", error="SomeError: error message"),
+    ]
+
+    input_dir_path = f's3://{s3_bucket_and_region["bucket"]}/input/test_run/'
+
+    # Write results to S3
+    write_results_file(results=results, input_dir_path=input_dir_path, s3=True)
+
+    # List objects in the results directory
+    list_response = pipeline_s3_client_main.client.list_objects_v2(
+        Bucket=s3_bucket_and_region["bucket"],
+        Prefix="input/test_run/reports/embeddings/",
+    )
+
+    # Should have one results file
+    assert list_response["KeyCount"] == 1
+
+    # Get the results file key
+    results_key = list_response["Contents"][0]["Key"]
+
+    # Read and validate the results file
+    results_path = f"s3://{s3_bucket_and_region['bucket']}/{results_key}"
+    file_content = json.loads(s3_object_read_text(results_path))
+
+    assert len(file_content) == 2
+
+    # Validate each result
+    assert file_content[0]["document_id"] == "doc1"
+    assert file_content[0]["error"] is None
+
+    assert file_content[1]["document_id"] == "doc2"
+    assert file_content[1]["error"] == "SomeError: error message"
