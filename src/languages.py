@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from cpr_sdk.parser_models import ParserOutput
 
