@@ -118,7 +118,7 @@ def process_task(
         )
 
         # Step 5: Save embeddings
-        embeddings_output_path = os.path.join(output_dir, document_id + ".npy")
+        embeddings_output_path = os.path.join(output_dir, task.document_id + ".npy")
         if not s3:
             Path(embeddings_output_path).parent.mkdir(parents=True, exist_ok=True)
         (
@@ -128,7 +128,7 @@ def process_task(
         )
 
         # Step 6: Save document JSON
-        task_output_path = os.path.join(output_dir, document_id + ".json")
+        task_output_path = os.path.join(output_dir, task.document_id + ".json")
         if not s3:
             Path(task_output_path).parent.mkdir(parents=True, exist_ok=True)
         (
