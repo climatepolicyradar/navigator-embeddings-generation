@@ -131,7 +131,3 @@ def test_encode_indexer_input(test_pdf_file_json):  # noqa: F811
 
     assert isinstance(description_embeddings, np.ndarray)
     assert isinstance(text_embeddings, np.ndarray)
-
-
-# TODO get_Text2EmbeddingsInput_array
-#   TODO needs s3 files, local files, of the form json IndexerInput objects

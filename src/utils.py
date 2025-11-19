@@ -1,13 +1,10 @@
 import logging
-import os
-from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 from cpr_sdk.parser_models import BlockType, ParserOutput, TextBlock
 
 from src.ml import SentenceEncoder
-from src.s3 import s3_object_read_text
 
 logger = logging.getLogger(__name__)
 
@@ -113,21 +110,3 @@ def encode_parser_output(
         text_embeddings = None
 
     return description_embedding, text_embeddings
-
-
-def get_Text2EmbeddingsInput_array(
-    input_dir: str, s3: bool, files_to_process_ids: Sequence[str]
-) -> List[ParserOutput]:
-    """Construct ParserOutput objects from parser output jsons.
-
-    These objects will be used to generate embeddings and are either read in from S3
-    or from the local file system.
-    """
-    return [
-        ParserOutput.model_validate_json(
-            s3_object_read_text(os.path.join(input_dir, id_ + ".json"))
-            if s3
-            else Path(os.path.join(input_dir, id_ + ".json")).read_text()
-        )
-        for id_ in files_to_process_ids
-    ]
