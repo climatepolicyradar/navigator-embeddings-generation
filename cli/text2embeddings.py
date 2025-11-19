@@ -53,6 +53,48 @@ class EmbeddingResult(BaseModel):
     error: Optional[str] = None
 
 
+def load_document_json(
+    document_id: DocumentImportId, input_dir: str, s3: bool, target_lang: str
+) -> str:
+    """
+    Load document JSON content, trying translated version first.
+
+    Tries to find a translated version of the document with the suffix
+    translated_{target_language}.json. If it doesn't exist, falls back to
+    the default path {document_id}.json.
+
+    Args:
+        document_id: The document import ID to load
+        input_dir: Directory containing input JSON files
+        s3: Whether to use S3 for I/O
+        target_lang: Target language code to look for in translated filename
+
+    Returns:
+        JSON content as a string
+
+    Raises:
+        ValueError: If the file doesn't exist (for S3)
+        FileNotFoundError: If the file doesn't exist (for local filesystem)
+    """
+    # Try to find a translated version first
+    translated_path = os.path.join(
+        input_dir, f"{document_id}_translated_{target_lang}.json"
+    )
+    if s3:
+        try:
+            return s3_object_read_text(translated_path)
+        except ValueError:
+            # File doesn't exist, fall through to default path
+            pass
+    else:
+        if Path(translated_path).exists():
+            return Path(translated_path).read_text()
+
+    # If no translated version found, use the default path
+    file_path = os.path.join(input_dir, document_id + ".json")
+    return s3_object_read_text(file_path) if s3 else Path(file_path).read_text()
+
+
 def process_document(
     document_id: DocumentImportId,
     encoder: SBERTEncoder,
@@ -86,10 +128,9 @@ def process_document(
 
     try:
         # Step 1: Load document
-        file_path = os.path.join(input_dir, document_id + ".json")
-        json_content = (
-            s3_object_read_text(file_path) if s3 else Path(file_path).read_text()
-        )
+        assert len(config.TARGET_LANGUAGES) == 1, "Must be one target language."
+        target_lang = next(iter(config.TARGET_LANGUAGES))
+        json_content = load_document_json(document_id, input_dir, s3, target_lang)
         parser_output = ParserOutput.model_validate_json(json_content)
 
         # Step 2: Check if language is supported
