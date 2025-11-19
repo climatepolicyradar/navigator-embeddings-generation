@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from tqdm.auto import tqdm
 
 from src import config
-from src.languages import get_docs_of_supported_language
+from src.languages import doc_has_supported_language
 from src.ml import SBERTEncoder
 from src.s3 import s3_object_read_text, save_ndarray_to_s3_as_npy, write_json_to_s3
 from src.utils import encode_parser_output, filter_on_block_type
@@ -93,21 +93,14 @@ def process_document(
         parser_output = ParserOutput.model_validate_json(json_content)
 
         # Step 2: Check if language is supported
-        parser_outputs_with_supported_lang: list[
-            ParserOutput
-        ] = get_docs_of_supported_language([parser_output])
-        if not parser_outputs_with_supported_lang:
+        if not doc_has_supported_language(parser_output):
             result.error = "Filtered out: unsupported language"
             return result
-        parser_output = parser_outputs_with_supported_lang[0]
 
         # Step 3: Filter unwanted text block types
-        parser_outputs_with_filtered_text_blocks: list[
-            ParserOutput
-        ] = filter_on_block_type(
-            inputs=[parser_output], remove_block_types=config.BLOCKS_TO_FILTER
+        parser_output: ParserOutput = filter_on_block_type(
+            document=parser_output, remove_block_types=config.BLOCKS_TO_FILTER
         )
-        parser_output = parser_outputs_with_filtered_text_blocks[0]
 
         # Step 4: Generate embeddings
         description_embedding, text_embeddings = encode_parser_output(

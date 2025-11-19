@@ -50,10 +50,8 @@ def document_has_no_source_url_languages_or_data(document: ParserOutput) -> bool
 
 
 @validate_languages_decorator
-def get_docs_of_supported_language(
-    documents: List[ParserOutput],
-) -> List[ParserOutput]:
-    """Filter out documents that don't meet language requirements.
+def doc_has_supported_language(document: ParserOutput) -> bool:
+    """Identify documents that don't meet language requirements.
 
     Empty documents that have a source url will have a translated output produced for
     them by the pdf parser with a language that is supported by the encoder. Thus,
@@ -61,9 +59,8 @@ def get_docs_of_supported_language(
     encode the root non-translated document as well. This is why we have the
     document_has_one_lang_that_is_supported function.
     """
-    return [
+    if document_has_one_lang_that_is_supported(
         document
-        for document in documents
-        if document_has_one_lang_that_is_supported(document)
-        or document_has_no_source_url_languages_or_data(document)
-    ]
+    ) or document_has_no_source_url_languages_or_data(document):
+        return True
+    return False

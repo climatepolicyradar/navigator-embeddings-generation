@@ -47,14 +47,9 @@ def filter_blocks(
 
 
 def filter_on_block_type(
-    inputs: Sequence[ParserOutput], remove_block_types: List[str]
-) -> Sequence[ParserOutput]:
-    """
-    Filter a sequence of ParserOutputs.
-
-    Remove the text blocks that are of the types declared in the remove block types
-    array.
-    """
+    document: ParserOutput, remove_block_types: List[str]
+) -> ParserOutput:
+    """Remove the text blocks of the types declared in the remove block types array."""
     for _filter in remove_block_types:
         try:
             BlockType(_filter)
@@ -65,15 +60,12 @@ def filter_on_block_type(
             )
             remove_block_types.remove(_filter)
 
-    return [
-        replace_text_blocks(
-            block=_input,
-            new_text_blocks=filter_blocks(
-                parser_output=_input, remove_block_types=remove_block_types
-            ),
-        )
-        for _input in inputs
-    ]
+    return replace_text_blocks(
+        block=document,
+        new_text_blocks=filter_blocks(
+            parser_output=document, remove_block_types=remove_block_types
+        ),
+    )
 
 
 def encode_parser_output(
